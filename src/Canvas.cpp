@@ -1,6 +1,7 @@
 #include "Canvas.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace {
@@ -36,7 +37,33 @@ const Glyph kGlyphs[] = {
     {'h', {".X.X.", "XXXXX", "XXXXX", ".XXX.", "..X.."}},
     {'n', {"..XX", "..X.", "..X.", "XXX.", "XXX."}},
     {'d', {".X.", "XXX", "XXX", ".X.", "..."}},
+    {'s', {".X.", "XXX", ".X.", "", ""}},
+    {'p', {"X", "", "", "", ""}},
+    {'c', {"X", "X", "", "", ""}},
+    {'t', {"XX", "XX", "", "", ""}},
+    {'~', {".X", "X.", ".X", "", ""}},
 };
+
+constexpr uint32_t kHatYellow = 0xF2C230;
+constexpr uint32_t kHatYellowDark = 0xC99A1A;
+constexpr uint32_t kHatYellowLight = 0xFFE27A;
+constexpr uint32_t kBeret = 0xA3304A;
+constexpr uint32_t kBeretDark = 0x7E2236;
+constexpr uint32_t kTopHat = 0x262626;
+constexpr uint32_t kTopHatLight = 0x4A4A4A;
+constexpr uint32_t kTopHatBand = 0xC8364A;
+constexpr uint32_t kToque = 0xFAFAFA;
+constexpr uint32_t kToqueShade = 0xD4D4D4;
+constexpr uint32_t kWood = 0xB07A3B;
+constexpr uint32_t kWoodDark = 0x8A5A28;
+constexpr uint32_t kMetal = 0x9A9A9A;
+constexpr uint32_t kPanEdge = 0x6A6A6A;
+constexpr uint32_t kPanIn = 0x4A4A4A;
+constexpr uint32_t kBlank = 0xF4F1EA;
+constexpr uint32_t kChuteRed = 0xE8505B;
+constexpr uint32_t kString = 0x6A6A6A;
+
+const int kRing[8][2] = {{-1, -1}, {0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}};
 
 int ClawRow(Claw c)
 {
@@ -147,7 +174,61 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
             }
             break;
         }
+        case Eyes::Dizzy: {
+            const int cx = ex;
+            const int cy = ey + 1;
+            const int f = (i == 0 ? p.frame : -p.frame) & 7;
+            for (int k = 0; k < 8; ++k) {
+                if (k == f || k == ((f + 1) & 7)) {
+                    continue;
+                }
+                Put(ox + cx + kRing[k][0], oy + cy + kRing[k][1], kInk);
+            }
+            break;
         }
+        }
+    }
+
+    const int hb = top - p.hatDrop;
+    auto row = [&](int y, int x0, int x1, uint32_t c) {
+        for (int x = x0; x <= x1; ++x) {
+            Put(ox + x, oy + y, c);
+        }
+    };
+    switch (p.hat) {
+    case Hat::HardHat:
+        row(hb - 3, 5, 10, kHatYellow);
+        row(hb - 2, 4, 11, kHatYellow);
+        row(hb - 1, 3, 12, kHatYellowDark);
+        Put(ox + 6, oy + hb - 3, kHatYellowLight);
+        Put(ox + 5, oy + hb - 2, kHatYellowLight);
+        break;
+    case Hat::Beret:
+        Put(ox + 8, oy + hb - 3, kBeretDark);
+        row(hb - 2, 5, 12, kBeret);
+        row(hb - 1, 4, 12, kBeretDark);
+        break;
+    case Hat::TopHat:
+        for (int y = hb - 6; y <= hb - 3; ++y) {
+            row(y, 5, 10, kTopHat);
+            Put(ox + 6, oy + y, kTopHatLight);
+        }
+        row(hb - 2, 5, 10, kTopHatBand);
+        row(hb - 1, 3, 12, kTopHat);
+        break;
+    case Hat::Toque:
+        row(hb - 7, 5, 10, kToque);
+        row(hb - 6, 4, 11, kToque);
+        row(hb - 5, 4, 11, kToque);
+        row(hb - 4, 5, 10, kToque);
+        Put(ox + 7, oy + hb - 6, kToqueShade);
+        Put(ox + 9, oy + hb - 5, kToqueShade);
+        row(hb - 3, 5, 10, kToque);
+        row(hb - 2, 5, 10, kToque);
+        row(hb - 1, 5, 10, kToqueShade);
+        break;
+    case Hat::None:
+        break;
     }
 
     if (p.keyboard) {
@@ -169,6 +250,122 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
         Put(ox + 1, oy + lr + d, kOrange);
         Put(ox + 14, oy + rr + d, kOrange);
         Put(ox + 15, oy + rr + d, kOrange);
+    }
+
+    const int side = p.toolSide < 0 ? -1 : 1;
+    const int r = side > 0 ? rr : lr;
+    auto tp = [&](int x, int y, uint32_t c) { Put(ox + (side > 0 ? x : 15 - x), oy + y, c); };
+    switch (p.tool) {
+    case Tool::Hammer:
+        for (int y = r - 3; y <= r - 1; ++y) {
+            tp(15, y, kWoodDark);
+        }
+        for (int x = 14; x <= 17; ++x) {
+            tp(x, r - 5, kMetal);
+            tp(x, r - 4, kMetal);
+        }
+        break;
+    case Tool::Brush:
+        for (int y = r - 3; y <= r; ++y) {
+            tp(16, y, kWood);
+        }
+        tp(16, r - 4, p.brushColor);
+        tp(16, r - 5, p.brushColor);
+        break;
+    case Tool::Wand:
+        for (int y = r - 4; y <= r; ++y) {
+            tp(16, y, kTopHat);
+        }
+        tp(16, r - 5, kPaper);
+        break;
+    case Tool::Pan: {
+        const int b = r + 1 - p.toolLift;
+        tp(16, r + 1, kWoodDark);
+        tp(17, p.toolLift > 0 ? r : r + 1, kWoodDark);
+        for (int x = 18; x <= 25; ++x) {
+            tp(x, b, kMetal);
+            tp(x, b + 1, kPanEdge);
+        }
+        for (int x = 19; x <= 24; ++x) {
+            tp(x, b + 2, kPanIn);
+        }
+        break;
+    }
+    case Tool::None:
+        break;
+    }
+}
+
+void Canvas::DrawLadder(int x, int bottom, int height)
+{
+    for (int y = bottom - height + 1; y <= bottom; ++y) {
+        Put(x, y, kWood);
+        Put(x + 5, y, kWood);
+        if ((bottom - y) % 3 == 1) {
+            for (int i = 1; i <= 4; ++i) {
+                Put(x + i, y, kWoodDark);
+            }
+        }
+    }
+}
+
+void Canvas::DrawEasel(int x, int y, const uint32_t* painting, const bool* revealed)
+{
+    for (int j = 0; j <= 6; ++j) {
+        for (int i = 0; i <= 8; ++i) {
+            if (i == 0 || i == 8 || j == 0 || j == 6) {
+                Put(x + i, y + j, kWoodDark);
+            } else {
+                const int idx = (j - 1) * 7 + (i - 1);
+                Put(x + i, y + j, revealed[idx] ? painting[idx] : kBlank);
+            }
+        }
+    }
+    const int legs[3][3] = {{2, 1, 0}, {6, 7, 8}, {4, 4, 4}};
+    for (int k = 0; k < 3; ++k) {
+        Put(x + legs[k][0], y + 7, kWood);
+        Put(x + legs[k][1], y + 8, kWood);
+        Put(x + legs[k][1], y + 9, kWood);
+        Put(x + legs[k][2], y + 10, kWood);
+    }
+}
+
+void Canvas::DrawParachute(int cx, int top, int fold)
+{
+    auto stripe = [&](int dx) { return ((dx + 30) / 3) % 2 ? kChuteRed : kHatYellow; };
+    if (fold == 0) {
+        const int widths[5] = {5, 7, 8, 9, 9};
+        for (int j = 0; j < 5; ++j) {
+            for (int dx = -widths[j]; dx <= widths[j]; ++dx) {
+                if (j == 4 && (dx + 9) % 6 == 3) {
+                    continue;
+                }
+                Put(cx + dx, top + j, stripe(dx));
+            }
+        }
+        const int from[4] = {-9, -3, 3, 9};
+        const int to[4] = {-8, -4, 3, 7};
+        for (int k = 0; k < 4; ++k) {
+            for (int y = top + 5; y <= top + 13; ++y) {
+                const double t = (y - (top + 5)) / 8.0;
+                const int x = cx + static_cast<int>(std::lround(from[k] + (to[k] - from[k]) * t));
+                Put(x, y, kString, 220);
+            }
+        }
+    } else if (fold == 1) {
+        const int widths[3] = {4, 6, 7};
+        for (int j = 0; j < 3; ++j) {
+            for (int dx = -widths[j]; dx <= widths[j]; ++dx) {
+                Put(cx + dx, top + 7 + j, stripe(dx));
+            }
+        }
+    } else {
+        for (int dx = -10; dx <= 10; ++dx) {
+            Put(cx + dx, top + 22, stripe(dx));
+        }
+        for (int dx = -11; dx <= 11; ++dx) {
+            Put(cx + dx, top + 23, stripe(dx));
+        }
     }
 }
 

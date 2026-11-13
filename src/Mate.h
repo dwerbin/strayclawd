@@ -21,8 +21,9 @@ public:
     bool Create(HINSTANCE instance);
 
 private:
-    enum class State { Hidden, SidePeek, Peek, Emerge, Active, Retreat, Falling, Dragged, Land };
-    enum class Act { Sit, Typing, Walk, Wave, Look, Dance, Sleep, Think, Sneeze, React };
+    enum class State { Hidden, SidePeek, Peek, Emerge, Active, Retreat, Falling, Dragged, Land, Parachute };
+    enum class Act { Sit, Typing, Walk, Wave, Look, Dance, Sleep, Think, Sneeze, React,
+                     Build, Paint, Magic, Cook, Stare, Dizzy };
     enum class Surface { None, Window, Ground };
     enum class ZMode { Free, Above, Behind };
 
@@ -30,6 +31,8 @@ private:
         char ch;
         double x, y, vx, vy, life;
         uint32_t color;
+        double ay;
+        double alpha;
     };
 
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
@@ -67,7 +70,18 @@ private:
     void HideNow();
     double NextDelay();
 
-    void Spawn(char ch, double x, double y, double vx, double vy, double life, uint32_t color);
+    void StartParachute();
+    void PlayAct(Act a);
+    void CheckStare(double dt);
+    void StepBuild(double dt);
+    void StepPaint(double dt);
+    void StepMagic(double dt);
+    void StepCook(double dt);
+    void LoadWallpaperThumb();
+    void Puff(double x, double y, int count, uint32_t color);
+
+    void Spawn(char ch, double x, double y, double vx, double vy, double life, uint32_t color,
+               double ay = 0.0, double alpha = 1.0);
     double Rnd();
     double Rnd(double a, double b);
     int RndI(int a, int b);
@@ -144,4 +158,30 @@ private:
     double grabDy_ = 0.0;
     double mouseVx_ = 0.0;
     double mouseVy_ = 0.0;
+
+    ULONG_PTR gdiplusToken_ = 0;
+    int pendingAct_ = -1;
+    int lift_ = 0;
+    double liftPos_ = 0.0;
+    double liftV_ = 0.0;
+    int ladderH_ = 0;
+    bool easel_ = false;
+    int easelSide_ = 1;
+    int chuteFold_ = -1;
+    double chuteX0_ = 0.0;
+    double landT_ = 0.0;
+    bool stars_ = false;
+    int phase_ = 0;
+    uint32_t brushColor_ = 0xE8505B;
+    uint32_t painting_[35] = {};
+    bool revealed_[35] = {};
+
+    double coverCheck_ = 0.0;
+    double coveredT_ = 0.0;
+    bool cursorNear_ = false;
+    double stareCooldown_ = 5.0;
+    double farT_ = 0.0;
+    double spinAcc_ = 0.0;
+    double spinIdle_ = 0.0;
+    double lastAngle_ = 0.0;
 };

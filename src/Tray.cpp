@@ -31,8 +31,18 @@ void Tray::ShowMenu(HWND owner, const Settings& settings, bool crabVisible) cons
     AppendMenuW(freq, MF_STRING, kCmdOften, L"Often (20-60 s)");
     CheckMenuRadioItem(freq, kCmdRare, kCmdOften, kCmdRare + static_cast<UINT>(settings.frequency), MF_BYCOMMAND);
 
+    HMENU play = CreatePopupMenu();
+    AppendMenuW(play, MF_STRING, kCmdPlayPeek, L"Peek");
+    AppendMenuW(play, MF_STRING, kCmdPlayParachute, L"Parachute");
+    AppendMenuW(play, MF_STRING, kCmdPlayBuild, L"DIY on a ladder");
+    AppendMenuW(play, MF_STRING, kCmdPlayPaint, L"Paint");
+    AppendMenuW(play, MF_STRING, kCmdPlayMagic, L"Magic");
+    AppendMenuW(play, MF_STRING, kCmdPlayCook, L"Cook");
+    AppendMenuW(play, MF_STRING, kCmdPlayDizzy, L"Dizzy");
+
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING, kCmdShow, L"Show now");
+    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(play), L"Play");
     AppendMenuW(menu, MF_STRING | (crabVisible ? 0u : MF_GRAYED), kCmdHide, L"Hide");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(freq), L"Frequency");

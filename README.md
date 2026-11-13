@@ -26,6 +26,7 @@ Starting the exe a second time makes the running crab appear now.
 Tray icon (right click):
 
 - Show now / Hide
+- Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Cook, Dizzy)
 - Frequency: Rare (5-15 min), Normal (1-5 min), Often (20-60 s)
 - Pause
 - Start with Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run\ClaudePoo`)
@@ -41,6 +42,19 @@ Settings are stored in `HKCU\Software\ClaudePoo`.
 - Then 4 to 8 activities: typing on a keyboard (code glyphs pop up), walking along the edge,
   waving at the mouse, following the mouse with its eyes, dancing, sleeping (wakes up when
   the mouse comes close), thinking, sneezing.
+- Short special animations, picked at random among the activities:
+  - DIY: puts on a hard hat, climbs a small ladder and hammers; the ladder vanishes and he
+    falls down, dizzy for a moment.
+  - Painter: beret and brush; he looks toward the wallpaper and paints a small copy of your
+    real wallpaper on an easel.
+  - Magician: top hat and wand; shooting stars, then a bow.
+  - Cook: chef toque and a frying pan; vegetables jump in the pan, steam rises.
+- Sometimes, when the cursor comes near, he stops and stares at it. Not every time: 30 %
+  chance, then a pause of 15-30 s. If you circle the cursor around him while he stares, he
+  gets dizzy.
+- Sometimes (15 % of the visits) he arrives by parachute from the top of a screen down to
+  the taskbar.
+- If another window covers him for 2 s, he leaves and comes back elsewhere a bit later.
 - Waves goodbye and slides back behind the window.
 - If no window edge is free (for example a maximized window), it uses the top of the taskbar.
 - Follows the window when you move it. Falls when the window is minimized or closed.

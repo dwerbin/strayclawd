@@ -6,12 +6,19 @@
 #include <cmath>
 #include <cstring>
 
+#include <objidl.h>
+namespace Gdiplus {
+using std::max;
+using std::min;
+}
+#include <gdiplus.h>
+
 namespace {
 
 constexpr UINT_PTR kTimerId = 1;
-constexpr int kCanvasW = 40;
-constexpr int kCanvasH = 36;
-constexpr int kCrabX = 12;
+constexpr int kCanvasW = 56;
+constexpr int kCanvasH = 48;
+constexpr int kCrabX = 20;
 constexpr int kCrabY = kCanvasH - kCrabH;
 constexpr int kFootLX = kCrabX + kCrabW / 2;
 
@@ -21,6 +28,12 @@ constexpr uint32_t kNote = 0xF2C14E;
 constexpr uint32_t kDrop = 0x6EC6FF;
 constexpr uint32_t kBang = 0xFFD84A;
 constexpr uint32_t kCode = 0xB8F5A0;
+
+constexpr uint32_t kSteam = 0xF0F0F0;
+constexpr uint32_t kCarrot = 0xF08A24;
+constexpr uint32_t kPea = 0x5DBB4A;
+constexpr uint32_t kTomato = 0xE23B3B;
+constexpr double kPi = 3.14159265358979323846;
 
 constexpr char kCodeGlyphs[] = "{};<>/=01";
 
@@ -46,6 +59,8 @@ bool Mate::Create(HINSTANCE instance)
 {
     instance_ = instance;
     rng_.seed(std::random_device{}());
+    Gdiplus::GdiplusStartupInput gdiplusInput;
+    Gdiplus::GdiplusStartup(&gdiplusToken_, &gdiplusInput, nullptr);
     settings_.Load();
     icon_ = CreateCrabIcon(GetSystemMetrics(SM_CXSMICON));
 
@@ -239,8 +254,38 @@ void Mate::OnCommand(UINT id)
     case kCmdQuit:
         Shutdown();
         break;
+    case kCmdPlayPeek:
+        if (state_ == State::Hidden) {
+            Appear(false);
+        }
+        break;
+    case kCmdPlayParachute:
+        if (state_ != State::Parachute && state_ != State::Dragged) {
+            if (state_ != State::Hidden) {
+                Hide();
+            }
+            StartParachute();
+        }
+        break;
+    case kCmdPlayBuild: PlayAct(Act::Build); break;
+    case kCmdPlayPaint: PlayAct(Act::Paint); break;
+    case kCmdPlayMagic: PlayAct(Act::Magic); break;
+    case kCmdPlayCook: PlayAct(Act::Cook); break;
+    case kCmdPlayDizzy: PlayAct(Act::Dizzy); break;
     default:
         break;
+    }
+}
+
+void Mate::PlayAct(Act a)
+{
+    if (state_ == State::Active) {
+        BeginAct(a);
+    } else {
+        pendingAct_ = static_cast<int>(a);
+        if (state_ == State::Hidden) {
+            Appear(false);
+        }
     }
 }
 
@@ -259,6 +304,10 @@ void Mate::Shutdown()
     if (icon_) {
         DestroyIcon(icon_);
         icon_ = nullptr;
+    }
+    if (gdiplusToken_) {
+        Gdiplus::GdiplusShutdown(gdiplusToken_);
+        gdiplusToken_ = 0;
     }
     DestroyWindow(trayWnd_);
 }
@@ -340,10 +389,18 @@ void Mate::SetScale(int scale)
     oldBmp_ = SelectObject(memDc_, dib_);
 }
 
-void Mate::Spawn(char ch, double x, double y, double vx, double vy, double life, uint32_t color)
+void Mate::Spawn(char ch, double x, double y, double vx, double vy, double life, uint32_t color, double ay, double alpha)
 {
-    if (particles_.size() < 40) {
-        particles_.push_back({ch, x, y, vx, vy, life, color});
+    if (particles_.size() < 60) {
+        particles_.push_back({ch, x, y, vx, vy, life, color, ay, alpha});
+    }
+}
+
+void Mate::Puff(double x, double y, int count, uint32_t color)
+{
+    for (int i = 0; i < count; ++i) {
+        const double a = 2.0 * kPi * i / count + Rnd(-0.3, 0.3);
+        Spawn('*', x - 1, y - 1, std::cos(a) * 14.0, std::sin(a) * 9.0, 0.45, color);
     }
 }
 
@@ -363,6 +420,10 @@ void Mate::Appear(bool allowSide)
     hop_ = 0.0;
     hopV_ = 0.0;
     fastRetreat_ = false;
+    if (allowSide && Rnd() < 0.15) {
+        StartParachute();
+        return;
+    }
     if (allowSide && Rnd() < 0.25 && PickSideSpot()) {
         Enter(State::SidePeek);
         Show();
@@ -408,6 +469,40 @@ void Mate::Hide(double delay)
     zmode_ = ZMode::Free;
     fastRetreat_ = false;
     hideNext_ = delay > 0.0 ? delay : NextDelay();
+}
+
+void Mate::StartParachute()
+{
+    std::vector<HMONITOR> mons;
+    EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR m, HDC, LPRECT, LPARAM lp) -> BOOL {
+        reinterpret_cast<std::vector<HMONITOR>*>(lp)->push_back(m);
+        return TRUE;
+    }, reinterpret_cast<LPARAM>(&mons));
+    if (mons.empty()) {
+        return;
+    }
+    MONITORINFO mi{};
+    mi.cbSize = sizeof(mi);
+    GetMonitorInfoW(mons[static_cast<size_t>(RndI(0, static_cast<int>(mons.size()) - 1))], &mi);
+    const RECT wa = mi.rcWork;
+    POINT center{(wa.left + wa.right) / 2, (wa.top + wa.bottom) / 2};
+    SetScale(ScaleAt(center));
+    const double s = scale_;
+    particles_.clear();
+    bubble_ = -1;
+    hop_ = 0.0;
+    hopV_ = 0.0;
+    fastRetreat_ = false;
+    surface_ = Surface::Ground;
+    surfHwnd_ = nullptr;
+    surfRect_ = wa;
+    side_ = 0;
+    chuteX0_ = Rnd(wa.left + 30.0 * s, std::max(wa.left + 30.0 * s, wa.right - 30.0 * s));
+    footX_ = chuteX0_;
+    footY_ = mi.rcMonitor.top - 2.0 * s;
+    SetZ(ZMode::Free);
+    Enter(State::Parachute);
+    Show();
 }
 
 bool Mate::PickTopSpot(HWND only)
@@ -610,11 +705,21 @@ void Mate::StartActivities()
 {
     actsLeft_ = RndI(4, 8);
     Enter(State::Active);
-    BeginAct(Act::Typing);
+    if (pendingAct_ >= 0) {
+        NextActivity();
+    } else {
+        BeginAct(Act::Typing);
+    }
 }
 
 void Mate::NextActivity()
 {
+    if (pendingAct_ >= 0) {
+        const Act a = static_cast<Act>(pendingAct_);
+        pendingAct_ = -1;
+        BeginAct(a);
+        return;
+    }
     if (actsLeft_-- <= 0) {
         StartRetreat(false);
         return;
@@ -626,6 +731,7 @@ void Mate::NextActivity()
     static const Weight kTable[] = {
         {Act::Typing, 5}, {Act::Walk, 3}, {Act::Wave, 1}, {Act::Look, 2}, {Act::Dance, 2},
         {Act::Sleep, 1},  {Act::Think, 2}, {Act::Sneeze, 1}, {Act::Sit, 2},
+        {Act::Build, 1},  {Act::Paint, 1}, {Act::Magic, 1}, {Act::Cook, 1},
     };
     int total = 0;
     for (const Weight& w : kTable) {
@@ -657,8 +763,33 @@ void Mate::BeginAct(Act a)
     timerA_ = 0.0;
     timerB_ = 0.0;
     bubble_ = -1;
+    phase_ = 0;
+    liftPos_ = 0.0;
+    liftV_ = 0.0;
     const double s = scale_;
     switch (a) {
+    case Act::Build: actDur_ = 8.4; break;
+    case Act::Paint: {
+        actDur_ = 9.0;
+        LoadWallpaperThumb();
+        std::fill(std::begin(revealed_), std::end(revealed_), false);
+        const double w = surfRect_.right - surfRect_.left;
+        easelSide_ = (w - relX_) >= relX_ ? 1 : -1;
+        break;
+    }
+    case Act::Magic: actDur_ = 6.2; break;
+    case Act::Cook: actDur_ = 7.6; break;
+    case Act::Stare: {
+        actDur_ = Rnd(2.5, 4.0);
+        farT_ = 0.0;
+        spinAcc_ = 0.0;
+        spinIdle_ = 0.0;
+        POINT c{};
+        GetCursorPos(&c);
+        lastAngle_ = std::atan2(c.y - (footY_ - 5.0 * s), c.x - footX_);
+        break;
+    }
+    case Act::Dizzy: actDur_ = 3.0; break;
     case Act::Sit: actDur_ = Rnd(2.0, 4.0); break;
     case Act::Typing:
         actDur_ = Rnd(5.0, 12.0);
@@ -802,6 +933,7 @@ void Mate::Tick(double dt)
 
     for (Particle& p : particles_) {
         p.life -= dt;
+        p.vy += p.ay * dt;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
     }
@@ -822,6 +954,11 @@ void Mate::Tick(double dt)
     }
     pose_ = Pose{};
     shake_ = 0;
+    lift_ = 0;
+    ladderH_ = 0;
+    easel_ = false;
+    chuteFold_ = -1;
+    stars_ = false;
     StepState(dt);
     if (state_ == State::Hidden) {
         return;
@@ -951,7 +1088,32 @@ void Mate::StepState(double dt)
             return;
         }
         SetZ(surface_ == Surface::Window ? ZMode::Above : ZMode::Free);
+        coverCheck_ -= dt;
+        if (coverCheck_ <= 0.0) {
+            coverCheck_ = 0.5;
+            if (surface_ == Surface::Window) {
+                scanner_.Refresh();
+                bool covered = false;
+                const auto& wins = scanner_.Windows();
+                for (size_t i = 0; i < wins.size(); ++i) {
+                    if (wins[i].hwnd == surfHwnd_) {
+                        POINT head{static_cast<LONG>(footX_), static_cast<LONG>(footY_ - 5.0 * s)};
+                        covered = scanner_.IsCovered(head, i);
+                        break;
+                    }
+                }
+                coveredT_ = covered ? coveredT_ + 0.5 : 0.0;
+                if (coveredT_ >= 2.0) {
+                    coveredT_ = 0.0;
+                    Hide(Rnd(5.0, 15.0));
+                    return;
+                }
+            } else if (static_cast<int>(clock_ / 0.5) % 4 == 0) {
+                zTopDone_ = false;
+            }
+        }
         actT_ += dt;
+        CheckStare(dt);
         StepActivity(dt);
         if (state_ == State::Active) {
             footX_ = surfRect_.left + relX_;
@@ -1070,6 +1232,92 @@ void Mate::StepState(double dt)
             NextActivity();
         }
         return;
+
+    case State::Parachute:
+        if (stateFlag_ == 0) {
+            footY_ += 45.0 * s * dt;
+            footX_ = chuteX0_ + std::sin(t * 1.3) * 6.0 * s;
+            chuteFold_ = 0;
+            pose_.left = Claw::High;
+            pose_.right = Claw::High;
+            pose_.legs = (static_cast<int>(t / 0.5) % 2) ? Legs::LiftLeft : Legs::LiftRight;
+            pose_.lookX = static_cast<int>(t / 1.4) % 3 - 1;
+            pose_.lookY = (static_cast<int>(t / 2.1) % 2) ? 1 : 0;
+            SetZ(ZMode::Free);
+            if (footY_ >= surfRect_.bottom) {
+                footY_ = surfRect_.bottom;
+                relX_ = footX_ - surfRect_.left;
+                edge_ = surfRect_.bottom;
+                stateFlag_ = 1;
+                landT_ = t;
+            }
+        } else {
+            const double lt = t - landT_;
+            footY_ = edge_;
+            pose_.body = lt < 0.25 ? Body::Squash : Body::Normal;
+            pose_.eyes = lt < 0.25 ? Eyes::Closed : Eyes::Happy;
+            chuteFold_ = lt < 0.25 ? 1 : (lt < 0.6 ? 2 : -1);
+            if (lt >= 0.6 && stateFlag_ == 1) {
+                stateFlag_ = 2;
+                Puff(kCrabX + 8, kCrabY + 8, 6, kWhite);
+            }
+            if (lt >= 1.0) {
+                StartActivities();
+            }
+        }
+        return;
+    }
+}
+
+void Mate::CheckStare(double dt)
+{
+    stareCooldown_ -= dt;
+    const double s = scale_;
+    POINT c{};
+    GetCursorPos(&c);
+    const double dx = c.x - footX_;
+    const double dy = c.y - (footY_ - 5.0 * s);
+    const bool isNear = std::hypot(dx, dy) < 70.0 * s;
+    const bool interruptible = act_ == Act::Sit || act_ == Act::Typing || act_ == Act::Walk || act_ == Act::Look;
+    if (isNear && !cursorNear_ && interruptible && stareCooldown_ <= 0.0) {
+        if (Rnd() < 0.3) {
+            BeginAct(Act::Stare);
+            stareCooldown_ = Rnd(15.0, 30.0);
+        } else {
+            stareCooldown_ = 3.0;
+        }
+    }
+    cursorNear_ = isNear;
+}
+
+void Mate::LoadWallpaperThumb()
+{
+    wchar_t path[MAX_PATH] = {};
+    if (SystemParametersInfoW(SPI_GETDESKWALLPAPER, MAX_PATH, path, 0) && path[0] != L'\0') {
+        Gdiplus::Bitmap src(path);
+        if (src.GetLastStatus() == Gdiplus::Ok && src.GetWidth() > 0) {
+            Gdiplus::Bitmap dst(7, 5, PixelFormat32bppARGB);
+            Gdiplus::Graphics g(&dst);
+            g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBilinear);
+            g.DrawImage(&src, 0, 0, 7, 5);
+            for (int y = 0; y < 5; ++y) {
+                for (int x = 0; x < 7; ++x) {
+                    Gdiplus::Color col;
+                    dst.GetPixel(x, y, &col);
+                    painting_[y * 7 + x] = (static_cast<uint32_t>(col.GetR()) << 16) |
+                                           (static_cast<uint32_t>(col.GetG()) << 8) | col.GetB();
+                }
+            }
+            return;
+        }
+    }
+    const COLORREF d = GetSysColor(COLOR_DESKTOP);
+    for (uint32_t& p : painting_) {
+        const int v = RndI(-14, 14);
+        const int r = std::clamp(static_cast<int>(GetRValue(d)) + v, 0, 255);
+        const int g = std::clamp(static_cast<int>(GetGValue(d)) + v, 0, 255);
+        const int b = std::clamp(static_cast<int>(GetBValue(d)) + v, 0, 255);
+        p = (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(b);
     }
 }
 
@@ -1233,6 +1481,69 @@ void Mate::StepActivity(double dt)
         }
         break;
 
+    case Act::Build: StepBuild(dt); break;
+    case Act::Paint: StepPaint(dt); break;
+    case Act::Magic: StepMagic(dt); break;
+    case Act::Cook: StepCook(dt); break;
+
+    case Act::Stare: {
+        pose_.lookX = std::abs(dx) > 8.0 * s ? Sign(dx) : 0;
+        pose_.lookY = dy < -12.0 * s ? -1 : (dy > 12.0 * s ? 1 : 0);
+        if (std::abs(dx) > 40.0 * s) {
+            shake_ = Sign(dx);
+        }
+        farT_ = dist > 90.0 * s ? farT_ + dt : 0.0;
+        if (farT_ > 1.0) {
+            done = true;
+        }
+        if (dist < 110.0 * s && dist > 6.0 * s) {
+            const double angle = std::atan2(dy, dx);
+            double d = angle - lastAngle_;
+            while (d > kPi) {
+                d -= 2.0 * kPi;
+            }
+            while (d < -kPi) {
+                d += 2.0 * kPi;
+            }
+            lastAngle_ = angle;
+            if (std::abs(d) > 0.02) {
+                if (spinAcc_ != 0.0 && Sign(d) != Sign(spinAcc_)) {
+                    spinAcc_ = 0.0;
+                }
+                spinAcc_ += d;
+                spinIdle_ = 0.0;
+                actDur_ = std::max(actDur_, actT_ + 1.0);
+                done = false;
+            } else {
+                spinIdle_ += dt;
+            }
+            if (spinIdle_ > 1.5) {
+                spinAcc_ = 0.0;
+            }
+            if (std::abs(spinAcc_) >= 4.0 * kPi) {
+                BeginAct(Act::Dizzy);
+                return;
+            }
+        } else {
+            spinAcc_ = 0.0;
+        }
+        break;
+    }
+
+    case Act::Dizzy:
+        stars_ = actT_ < 2.6;
+        if (actT_ < 2.6) {
+            pose_.eyes = Eyes::Dizzy;
+            pose_.frame = static_cast<int>(actT_ / 0.07);
+            shake_ = static_cast<int>(std::lround(std::sin(actT_ * 5.0)));
+            pose_.legs = (static_cast<int>(actT_ / 0.25) % 2) ? Legs::LiftLeft : Legs::LiftRight;
+            pose_.body = (static_cast<int>(actT_ / 0.5) % 2) ? Body::Crouch : Body::Normal;
+        } else {
+            pose_.eyes = Eyes::Closed;
+            shake_ = (static_cast<int>(actT_ / 0.05) % 2) ? 1 : -1;
+        }
+        break;
+
     case Act::React:
         if (reactKind_ == 1) {
             shake_ = (static_cast<int>(actT_ / 0.08) % 2) ? 1 : -1;
@@ -1254,6 +1565,263 @@ void Mate::StepActivity(double dt)
     }
 }
 
+void Mate::StepBuild(double dt)
+{
+    const double t = actT_;
+    pose_.hat = Hat::HardHat;
+    if (t < 0.6) {
+        pose_.hatDrop = static_cast<int>(std::lround((1.0 - t / 0.6) * 12.0));
+        pose_.lookY = -1;
+        return;
+    }
+    if (t < 0.75) {
+        pose_.body = Body::Crouch;
+    }
+    if (phase_ == 0) {
+        phase_ = 1;
+        Puff(kCrabX + 8, kCrabY - 2, 5, kWhite);
+    }
+    if (t < 6.0) {
+        ladderH_ = 12;
+    }
+    if (t < 0.9) {
+        return;
+    }
+    if (t < 3.3) {
+        const int step = std::min(6, static_cast<int>((t - 0.9) / 0.4) + 1);
+        lift_ = 2 * step;
+        pose_.legs = step % 2 ? Legs::LiftLeft : Legs::LiftRight;
+        pose_.left = step % 2 ? Claw::High : Claw::Up;
+        pose_.right = step % 2 ? Claw::Up : Claw::High;
+        pose_.lookY = -1;
+    } else if (t < 6.0) {
+        lift_ = 12;
+        pose_.tool = Tool::Hammer;
+        pose_.toolSide = 1;
+        const int k = static_cast<int>((t - 3.3) / 0.3);
+        const bool up = k % 2 == 0;
+        pose_.right = up ? Claw::High : Claw::Up;
+        pose_.lookX = 1;
+        pose_.lookY = -1;
+        if (!up && counter_ != k) {
+            counter_ = k;
+            const double hx = kCrabX + 17;
+            const double hy = kCrabY - 12 - 3;
+            Spawn('*', hx, hy - 2, Rnd(-12.0, 12.0), Rnd(-14.0, -5.0), 0.4, kBang);
+            if (Rnd() < 0.5) {
+                Spawn('s', hx + 1, hy - 3, Rnd(-6.0, 10.0), Rnd(-12.0, -6.0), 0.5, kWhite);
+            }
+        }
+    } else {
+        if (phase_ < 2) {
+            phase_ = 2;
+            Puff(kCrabX + 8, kCrabY + 3, 6, kWhite);
+            liftPos_ = 12.0;
+            liftV_ = 0.0;
+        }
+        if (t < 6.35) {
+            lift_ = 12;
+        } else if (phase_ == 2) {
+            liftV_ -= 200.0 * dt;
+            liftPos_ += liftV_ * dt;
+            if (liftPos_ <= 0.0) {
+                liftPos_ = 0.0;
+                phase_ = 3;
+                landT_ = t;
+                Spawn('*', kCrabX - 2, kCrabY + 6, -10.0, -8.0, 0.5, kBang);
+                Spawn('*', kCrabX + 16, kCrabY + 6, 10.0, -8.0, 0.5, kBang);
+            }
+            lift_ = static_cast<int>(std::lround(liftPos_));
+        }
+        if (phase_ < 3) {
+            pose_.eyes = Eyes::Surprised;
+            pose_.legs = Legs::Spread;
+            pose_.left = Claw::High;
+            pose_.right = Claw::High;
+        } else {
+            const double lt = t - landT_;
+            pose_.body = lt < 0.25 ? Body::Squash : Body::Normal;
+            pose_.eyes = Eyes::Dizzy;
+            pose_.frame = static_cast<int>(lt / 0.07);
+            stars_ = true;
+        }
+    }
+}
+
+void Mate::StepPaint(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    pose_.hat = Hat::Beret;
+    if (t < 0.5) {
+        pose_.hatDrop = static_cast<int>(std::lround((1.0 - t / 0.5) * 10.0));
+    }
+    const double puffX = easelSide_ > 0 ? kCrabX + 22 : kCrabX - 7;
+    if (t >= 0.4 && t < 8.7) {
+        easel_ = true;
+        if (phase_ == 0) {
+            phase_ = 1;
+            Puff(puffX, kCrabY + 4, 5, kWhite);
+        }
+    }
+    if (t < 0.5) {
+        return;
+    }
+    pose_.tool = Tool::Brush;
+    pose_.toolSide = easelSide_;
+    pose_.brushColor = brushColor_;
+    Claw& arm = easelSide_ > 0 ? pose_.right : pose_.left;
+    if (t < 1.5) {
+        pose_.lookX = -easelSide_;
+        pose_.lookY = -1;
+    } else if (t < 7.5) {
+        const double c = std::fmod(t - 1.5, 1.2);
+        if (c < 0.4) {
+            pose_.lookX = -easelSide_;
+            pose_.lookY = -1;
+        } else {
+            pose_.lookX = easelSide_;
+            const int k = static_cast<int>((c - 0.4) / 0.15);
+            const bool dab = k % 2 == 0;
+            arm = dab ? Claw::Mid : Claw::Up;
+            const int dabId = static_cast<int>((t - 1.5) / 1.2) * 10 + k + 1;
+            if (dab && counter_ != dabId) {
+                counter_ = dabId;
+                for (int n = 0; n < 2; ++n) {
+                    int hidden[35];
+                    int count = 0;
+                    for (int i = 0; i < 35; ++i) {
+                        if (!revealed_[i]) {
+                            hidden[count++] = i;
+                        }
+                    }
+                    if (count == 0) {
+                        break;
+                    }
+                    const int idx = hidden[RndI(0, count - 1)];
+                    revealed_[idx] = true;
+                    brushColor_ = painting_[idx];
+                }
+            }
+        }
+    } else {
+        std::fill(std::begin(revealed_), std::end(revealed_), true);
+        pose_.eyes = Eyes::Happy;
+        if (phase_ == 1) {
+            phase_ = 2;
+            hopV_ = 35.0;
+            Spawn('h', kCrabX + 5, kCrabY - 8, 0.0, -9.0, 1.2, kHeart);
+        }
+        if (t >= 8.7 && phase_ == 2) {
+            phase_ = 3;
+            Puff(puffX, kCrabY + 4, 6, kWhite);
+        }
+    }
+}
+
+void Mate::StepMagic(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    pose_.hat = Hat::TopHat;
+    if (t < 0.5) {
+        pose_.hatDrop = static_cast<int>(std::lround((1.0 - t / 0.5) * 12.0));
+        return;
+    }
+    pose_.tool = Tool::Wand;
+    pose_.toolSide = 1;
+    const double tipX = kCrabX + 16;
+    if (t < 5.0) {
+        const double c = std::fmod(t - 0.5, 0.9);
+        const int k = static_cast<int>((t - 0.5) / 0.9);
+        const bool flick = c < 0.25;
+        pose_.right = flick ? Claw::High : Claw::Up;
+        const double tipY = kCrabY + (flick ? 0 : 2) - 5;
+        if (counter_ != k + 1) {
+            counter_ = k + 1;
+            dir_ = Rnd() < 0.5 ? -1 : 1;
+            const double vx = dir_ * Rnd(16.0, 24.0);
+            const double vy = -Rnd(10.0, 16.0);
+            Spawn('s', tipX - 1, kCrabY - 6, vx, vy, 1.1, kBang);
+            for (int j = 1; j <= 3; ++j) {
+                Spawn('p', tipX - vx * 0.05 * j, kCrabY - 5 - vy * 0.05 * j, vx, vy, 1.1, kBang, 0.0, 0.85 - 0.2 * j);
+            }
+        }
+        pose_.eyes = flick ? Eyes::Happy : Eyes::Open;
+        pose_.lookX = dir_;
+        pose_.lookY = -1;
+        if (Rnd() < 0.12) {
+            Spawn('p', tipX, tipY, Rnd(-3.0, 3.0), 6.0, 0.6, kWhite, 0.0, 0.8);
+        }
+    } else {
+        if (phase_ == 0) {
+            phase_ = 1;
+            for (int i = 0; i < 8; ++i) {
+                const double a = 2.0 * kPi * i / 8.0;
+                Spawn('s', tipX - 1, kCrabY - 6, std::cos(a) * 18.0, std::sin(a) * 14.0, 0.7, kBang);
+            }
+        }
+        if (t > 5.3) {
+            pose_.body = Body::Crouch;
+            pose_.eyes = Eyes::Happy;
+            pose_.right = Claw::Mid;
+        } else {
+            pose_.right = Claw::High;
+        }
+    }
+}
+
+void Mate::StepCook(double dt)
+{
+    const double t = actT_;
+    pose_.hat = Hat::Toque;
+    if (t < 0.5) {
+        pose_.hatDrop = static_cast<int>(std::lround((1.0 - t / 0.5) * 12.0));
+        return;
+    }
+    pose_.tool = Tool::Pan;
+    pose_.toolSide = 1;
+    pose_.right = Claw::Mid;
+    pose_.lookX = 1;
+    if (t < 6.0) {
+        const double c = std::fmod(t - 0.5, 1.3);
+        const int k = static_cast<int>((t - 0.5) / 1.3);
+        if (c < 0.15) {
+            pose_.toolLift = 2;
+        }
+        if (counter_ != k + 1) {
+            counter_ = k + 1;
+            const int n = RndI(2, 3);
+            for (int i = 0; i < n; ++i) {
+                const int kind = RndI(0, 2);
+                const char ch = kind == 0 ? 'c' : (kind == 1 ? 'p' : 't');
+                const uint32_t col = kind == 0 ? kCarrot : (kind == 1 ? kPea : kTomato);
+                const double vy = -Rnd(26.0, 34.0);
+                Spawn(ch, kCrabX + 20 + RndI(0, 3), kCrabY + 3, Rnd(-3.0, 3.0), vy, 2.0 * -vy / 70.0, col, 70.0);
+            }
+        }
+        pose_.lookY = (c > 0.15 && c < 0.9) ? -1 : 0;
+        if (c >= 0.9 && c < 1.1) {
+            pose_.eyes = Eyes::Happy;
+        }
+        timerA_ -= dt;
+        if (timerA_ <= 0.0) {
+            timerA_ = 0.6;
+            Spawn('~', kCrabX + 21 + RndI(-1, 1), kCrabY + 1, Rnd(-2.0, 2.0), -8.0, 1.0, kSteam, 0.0, 0.6);
+        }
+    } else {
+        pose_.eyes = Eyes::Happy;
+        pose_.lookX = 0;
+        if (t > 6.2 && t < 6.5) {
+            pose_.body = Body::Crouch;
+        }
+        if (phase_ == 0) {
+            phase_ = 1;
+            Spawn('h', kCrabX + 6, kCrabY - 9, 0.0, -9.0, 1.2, kHeart);
+        }
+    }
+}
+
 void Mate::Render()
 {
     if (!bits_) {
@@ -1261,13 +1829,34 @@ void Mate::Render()
     }
     canvas_.Clear();
     const int ox = kCrabX + shake_;
-    const int oy = kCrabY - static_cast<int>(std::lround(hop_));
+    const int oy = kCrabY - static_cast<int>(std::lround(hop_)) - lift_;
+    if (ladderH_ > 0) {
+        canvas_.DrawLadder(kCrabX + 5, kCrabY + kCrabH - 1, ladderH_);
+    }
+    if (easel_) {
+        canvas_.DrawEasel(easelSide_ > 0 ? kCrabX + 18 : kCrabX - 11, kCrabY - 1, painting_, revealed_);
+    }
+    if (chuteFold_ == 2) {
+        canvas_.DrawParachute(ox + 8, oy - 14, 2);
+    }
     canvas_.DrawCrab(pose_, ox, oy);
+    if (chuteFold_ == 0 || chuteFold_ == 1) {
+        canvas_.DrawParachute(ox + 8, oy - 14, chuteFold_);
+    }
+    if (stars_) {
+        const int sy = pose_.hat != Hat::None ? oy - 6 : oy - 3;
+        for (int k = 0; k < 3; ++k) {
+            const double a = clock_ * 5.0 + k * 2.0 * kPi / 3.0;
+            const int x = ox + 7 + static_cast<int>(std::lround(8.0 * std::cos(a)));
+            const int y = sy + static_cast<int>(std::lround(2.0 * std::sin(a)));
+            canvas_.DrawGlyph('s', x - 1, y - 1, kBang, 255);
+        }
+    }
     if (bubble_ >= 0) {
         canvas_.DrawBubble(ox + 9, oy - 11, bubble_);
     }
     for (const Particle& p : particles_) {
-        const int alpha = static_cast<int>(255.0 * std::min(1.0, p.life / 0.35));
+        const int alpha = static_cast<int>(255.0 * std::min(1.0, p.life / 0.35) * p.alpha);
         canvas_.DrawGlyph(p.ch, static_cast<int>(std::lround(p.x)), static_cast<int>(std::lround(p.y)), p.color, alpha);
     }
     const int w = canvas_.PixelWidth();

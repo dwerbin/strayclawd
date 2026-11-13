@@ -4,10 +4,12 @@
 #include <cstdint>
 #include <vector>
 
-enum class Eyes { Open, Closed, Happy, Surprised };
+enum class Eyes { Open, Closed, Happy, Surprised, Dizzy };
 enum class Claw { High, Up, Mid, Down };
 enum class Legs { Stand, LiftLeft, LiftRight, Spread };
 enum class Body { Normal, Crouch, Squash };
+enum class Hat { None, HardHat, Beret, TopHat, Toque };
+enum class Tool { None, Hammer, Brush, Wand, Pan };
 
 /** Drawing parameters of one crab frame. */
 struct Pose {
@@ -20,6 +22,13 @@ struct Pose {
     Body body = Body::Normal;
     bool keyboard = false;
     int pressedKey = -1;
+    Hat hat = Hat::None;
+    int hatDrop = 0;
+    Tool tool = Tool::None;
+    int toolSide = 1;
+    int toolLift = 0;
+    uint32_t brushColor = 0xE8505B;
+    int frame = 0;
 };
 
 constexpr int kCrabW = 16;
@@ -34,6 +43,9 @@ public:
     void DrawCrab(const Pose& pose, int x, int y);
     void DrawGlyph(char c, int x, int y, uint32_t rgb, int alpha);
     void DrawBubble(int x, int y, int dots);
+    void DrawLadder(int x, int bottom, int height);
+    void DrawEasel(int x, int y, const uint32_t* painting, const bool* revealed);
+    void DrawParachute(int cx, int top, int fold);
     int PixelWidth() const { return lw_ * scale_; }
     int PixelHeight() const { return lh_ * scale_; }
     const uint32_t* Data() const { return px_.data(); }

@@ -16,4 +16,4 @@ add_executable(claudepoo WIN32
 
 target_compile_definitions(claudepoo PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_options(claudepoo PRIVATE /W4 /utf-8 /permissive-)
-target_link_libraries(claudepoo PRIVATE user32 gdi32 dwmapi shell32 advapi32 shcore)
+target_link_libraries(claudepoo PRIVATE user32 gdi32 dwmapi shell32 advapi32 shcore gdiplus ole32)

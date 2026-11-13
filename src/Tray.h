@@ -13,6 +13,13 @@ enum TrayCommand : UINT {
     kCmdOften = 1012,
     kCmdPause = 1020,
     kCmdAutostart = 1021,
+    kCmdPlayPeek = 1030,
+    kCmdPlayParachute = 1031,
+    kCmdPlayBuild = 1032,
+    kCmdPlayPaint = 1033,
+    kCmdPlayMagic = 1034,
+    kCmdPlayCook = 1035,
+    kCmdPlayDizzy = 1036,
     kCmdQuit = 1099,
 };
 
