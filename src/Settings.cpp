@@ -31,12 +31,20 @@ void Settings::Load()
     const DWORD f = ReadDword(L"Frequency", 1);
     frequency = f <= 2 ? static_cast<Frequency>(f) : Frequency::Normal;
     paused = ReadDword(L"Paused", 0) != 0;
+    followTyping = ReadDword(L"FollowTyping", 0) != 0;
+    partyDate = ReadDword(L"PartyDate", 0);
+    plantDay = ReadDword(L"PlantDay", 0);
+    plantLevel = ReadDword(L"PlantLevel", 0);
 }
 
 void Settings::Save() const
 {
     WriteDword(L"Frequency", static_cast<DWORD>(frequency));
     WriteDword(L"Paused", paused ? 1 : 0);
+    WriteDword(L"FollowTyping", followTyping ? 1 : 0);
+    WriteDword(L"PartyDate", partyDate);
+    WriteDword(L"PlantDay", plantDay);
+    WriteDword(L"PlantLevel", plantLevel);
 }
 
 bool IsAutostart()

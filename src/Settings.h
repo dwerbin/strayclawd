@@ -6,6 +6,10 @@ enum class Frequency { Rare = 0, Normal = 1, Often = 2 };
 struct Settings {
     Frequency frequency = Frequency::Normal;
     bool paused = false;
+    bool followTyping = false;
+    unsigned long partyDate = 0;
+    unsigned long plantDay = 0;
+    unsigned long plantLevel = 0;
 
     void Load();
     void Save() const;

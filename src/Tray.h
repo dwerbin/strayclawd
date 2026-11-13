@@ -20,6 +20,17 @@ enum TrayCommand : UINT {
     kCmdPlayMagic = 1034,
     kCmdPlayCook = 1035,
     kCmdPlayDizzy = 1036,
+    kCmdPlayFish = 1037,
+    kCmdPlayRead = 1038,
+    kCmdPlayJuggle = 1039,
+    kCmdPlayWater = 1040,
+    kCmdPlayFitness = 1041,
+    kCmdPlaySkate = 1042,
+    kCmdPlayUmbrella = 1043,
+    kCmdPlayCoffee = 1044,
+    kCmdPlayYawn = 1045,
+    kCmdFollowTyping = 1022,
+    kCmdPartyToday = 1023,
     kCmdQuit = 1099,
 };
 

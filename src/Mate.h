@@ -23,7 +23,8 @@ public:
 private:
     enum class State { Hidden, SidePeek, Peek, Emerge, Active, Retreat, Falling, Dragged, Land, Parachute };
     enum class Act { Sit, Typing, Walk, Wave, Look, Dance, Sleep, Think, Sneeze, React,
-                     Build, Paint, Magic, Cook, Stare, Dizzy };
+                     Build, Paint, Magic, Cook, Stare, Dizzy,
+                     Fish, Read, Juggle, Water, Fitness, Skate, Umbrella, Coffee, Yawn, Chase };
     enum class Surface { None, Window, Ground };
     enum class ZMode { Free, Above, Behind };
 
@@ -77,6 +78,21 @@ private:
     void StepPaint(double dt);
     void StepMagic(double dt);
     void StepCook(double dt);
+    void StepFish(double dt);
+    void StepRead(double dt);
+    void StepJuggle(double dt);
+    void StepWater(double dt);
+    void StepFitness(double dt);
+    void StepSkate(double dt);
+    void StepUmbrella(double dt);
+    void StepCoffee(double dt);
+    void StepYawn(double dt);
+    void StepChase(double dt);
+    void ApplySeason(double dt);
+    void CheckTyping();
+    void UpdateKeyboardHook();
+    static LRESULT CALLBACK KeyboardProc(int code, WPARAM wp, LPARAM lp);
+    int SideWithRoom() const;
     void LoadWallpaperThumb();
     void Puff(double x, double y, int count, uint32_t color);
 
@@ -175,6 +191,23 @@ private:
     uint32_t brushColor_ = 0xE8505B;
     uint32_t painting_[35] = {};
     bool revealed_[35] = {};
+
+    int propSide_ = 1;
+    bool juggle_ = false;
+    int juggleDrop_ = -1;
+    int plantLevel_ = -1;
+    int rainbow_ = 0;
+    int rodX_ = 0;
+    int rodY_ = 0;
+    int bobberY_ = -1;
+    int catchKind_ = 0;
+    double seasonT_ = 0.0;
+
+    static Mate* hookOwner_;
+    HHOOK keyHook_ = nullptr;
+    int keyPresses_ = 0;
+    double keyRate_ = 0.0;
+    double lastKeyT_ = -10.0;
 
     double coverCheck_ = 0.0;
     double coveredT_ = 0.0;

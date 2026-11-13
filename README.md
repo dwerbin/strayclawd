@@ -26,7 +26,10 @@ Starting the exe a second time makes the running crab appear now.
 Tray icon (right click):
 
 - Show now / Hide
-- Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Cook, Dizzy)
+- Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Cook, Dizzy,
+  Fishing, Reading, Juggling, Watering the plant, Fitness, Skateboard, Rain and rainbow,
+  Coffee, Yawn)
+- Type along with me / Today is a party day
 - Frequency: Rare (5-15 min), Normal (1-5 min), Often (20-60 s)
 - Pause
 - Start with Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run\ClaudePoo`)
@@ -49,6 +52,24 @@ Settings are stored in `HKCU\Software\ClaudePoo`.
     real wallpaper on an easel.
   - Magician: top hat and wand; shooting stars, then a bow.
   - Cook: chef toque and a frying pan; vegetables jump in the pan, steam rises.
+  - Fishing from the window edge: the line goes down into the window; a fish or an old boot.
+  - Reading with glasses, turning pages.
+  - Juggling three balls; sometimes one falls on his head.
+  - Watering a small plant. It grows one step per watering (up to a flower) and starts
+    again from a seed each day.
+  - Fitness: push-ups, then a barbell, with sweat drops.
+  - Skateboard along the edge, with a jump at the end.
+  - Rain: he opens an umbrella, then a rainbow appears.
+- Time of day: coffee in the morning (6-11 h), yawns after lunch and in the evening, more
+  sleep and a nightcap at night (21-6 h).
+- Seasons: Santa hat and snow in December, witch hat from 24 to 31 October, party hat and
+  confetti on 1 January and on your party day (tray: "Today is a party day").
+- He sits more often on the window you are using.
+- Sometimes, when the cursor comes near and just above him, he chases it along the edge and
+  jumps to catch it.
+- "Type along with me" (tray, off by default): when you type, he types with you, one claw
+  per key press. It uses a low-level keyboard hook that only counts key presses; it never
+  reads which key.
 - Sometimes, when the cursor comes near, he stops and stares at it. Not every time: 30 %
   chance, then a pause of 15-30 s. If you circle the cursor around him while he stares, he
   gets dizzy.

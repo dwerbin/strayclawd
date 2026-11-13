@@ -8,8 +8,10 @@ enum class Eyes { Open, Closed, Happy, Surprised, Dizzy };
 enum class Claw { High, Up, Mid, Down };
 enum class Legs { Stand, LiftLeft, LiftRight, Spread };
 enum class Body { Normal, Crouch, Squash };
-enum class Hat { None, HardHat, Beret, TopHat, Toque };
-enum class Tool { None, Hammer, Brush, Wand, Pan };
+enum class Hat { None, HardHat, Beret, TopHat, Toque, Nightcap, Santa, Witch, Party };
+enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella };
+
+constexpr int kNoBarbell = -99;
 
 /** Drawing parameters of one crab frame. */
 struct Pose {
@@ -29,6 +31,11 @@ struct Pose {
     int toolLift = 0;
     uint32_t brushColor = 0xE8505B;
     int frame = 0;
+    bool mouth = false;
+    bool glasses = false;
+    int book = -1;
+    int barbell = kNoBarbell;
+    bool skate = false;
 };
 
 constexpr int kCrabW = 16;
@@ -46,6 +53,9 @@ public:
     void DrawLadder(int x, int bottom, int height);
     void DrawEasel(int x, int y, const uint32_t* painting, const bool* revealed);
     void DrawParachute(int cx, int top, int fold);
+    void DrawPlant(int x, int bottom, int level);
+    void DrawRainbow(int cx, int cy, int alpha);
+    void DrawLine(int x0, int y0, int x1, int y1, uint32_t rgb, int alpha = 255);
     int PixelWidth() const { return lw_ * scale_; }
     int PixelHeight() const { return lh_ * scale_; }
     const uint32_t* Data() const { return px_.data(); }

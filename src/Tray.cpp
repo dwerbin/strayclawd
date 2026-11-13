@@ -39,6 +39,15 @@ void Tray::ShowMenu(HWND owner, const Settings& settings, bool crabVisible) cons
     AppendMenuW(play, MF_STRING, kCmdPlayMagic, L"Magic");
     AppendMenuW(play, MF_STRING, kCmdPlayCook, L"Cook");
     AppendMenuW(play, MF_STRING, kCmdPlayDizzy, L"Dizzy");
+    AppendMenuW(play, MF_STRING, kCmdPlayFish, L"Fishing");
+    AppendMenuW(play, MF_STRING, kCmdPlayRead, L"Reading");
+    AppendMenuW(play, MF_STRING, kCmdPlayJuggle, L"Juggling");
+    AppendMenuW(play, MF_STRING, kCmdPlayWater, L"Watering the plant");
+    AppendMenuW(play, MF_STRING, kCmdPlayFitness, L"Fitness");
+    AppendMenuW(play, MF_STRING, kCmdPlaySkate, L"Skateboard");
+    AppendMenuW(play, MF_STRING, kCmdPlayUmbrella, L"Rain and rainbow");
+    AppendMenuW(play, MF_STRING, kCmdPlayCoffee, L"Coffee");
+    AppendMenuW(play, MF_STRING, kCmdPlayYawn, L"Yawn");
 
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING, kCmdShow, L"Show now");
@@ -47,6 +56,12 @@ void Tray::ShowMenu(HWND owner, const Settings& settings, bool crabVisible) cons
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(freq), L"Frequency");
     AppendMenuW(menu, MF_STRING | (settings.paused ? MF_CHECKED : 0u), kCmdPause, L"Pause");
+    AppendMenuW(menu, MF_STRING | (settings.followTyping ? MF_CHECKED : 0u), kCmdFollowTyping,
+                L"Type along with me (counts key presses only)");
+    SYSTEMTIME now{};
+    GetLocalTime(&now);
+    const bool partyToday = settings.partyDate == static_cast<unsigned long>(now.wMonth * 100 + now.wDay);
+    AppendMenuW(menu, MF_STRING | (partyToday ? MF_CHECKED : 0u), kCmdPartyToday, L"Today is a party day");
     AppendMenuW(menu, MF_STRING | (IsAutostart() ? MF_CHECKED : 0u), kCmdAutostart, L"Start with Windows");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kCmdQuit, L"Quit");

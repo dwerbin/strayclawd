@@ -17,10 +17,17 @@ namespace {
 
 constexpr UINT_PTR kTimerId = 1;
 constexpr int kCanvasW = 56;
-constexpr int kCanvasH = 48;
+constexpr int kCanvasH = 60;
 constexpr int kCrabX = 20;
-constexpr int kCrabY = kCanvasH - kCrabH;
+constexpr int kCrabY = 38;
+constexpr int kFeetRow = kCrabY + kCrabH;
 constexpr int kFootLX = kCrabX + kCrabW / 2;
+constexpr uint32_t kRain = 0x7FB2FF;
+constexpr uint32_t kSnow = 0xFFFFFF;
+constexpr uint32_t kBobber = 0xE8505B;
+constexpr uint32_t kFishColor = 0x5FA8D3;
+constexpr uint32_t kBootColor = 0x6B4A2B;
+constexpr uint32_t kBalls[3] = {0xE8505B, 0xF2C14E, 0x3E7CD8};
 
 constexpr uint32_t kWhite = 0xFFFFFF;
 constexpr uint32_t kHeart = 0xE8505B;
@@ -97,7 +104,75 @@ bool Mate::Create(HINSTANCE instance)
     QueryPerformanceCounter(&qpcLast_);
     hideNext_ = 3.0;
     SetTimer(crab_, kTimerId, 33, nullptr);
+    UpdateKeyboardHook();
     return true;
+}
+
+Mate* Mate::hookOwner_ = nullptr;
+
+void Mate::UpdateKeyboardHook()
+{
+    if (settings_.followTyping && !keyHook_) {
+        hookOwner_ = this;
+        keyHook_ = SetWindowsHookExW(WH_KEYBOARD_LL, &Mate::KeyboardProc, instance_, 0);
+    } else if (!settings_.followTyping && keyHook_) {
+        UnhookWindowsHookEx(keyHook_);
+        keyHook_ = nullptr;
+        hookOwner_ = nullptr;
+    }
+}
+
+LRESULT CALLBACK Mate::KeyboardProc(int code, WPARAM wp, LPARAM lp)
+{
+    if (code == HC_ACTION && hookOwner_ && (wp == WM_KEYDOWN || wp == WM_SYSKEYDOWN)) {
+        ++hookOwner_->keyPresses_;
+        hookOwner_->keyRate_ += 1.0;
+        hookOwner_->lastKeyT_ = hookOwner_->clock_;
+    }
+    return CallNextHookEx(nullptr, code, wp, lp);
+}
+
+void Mate::CheckTyping()
+{
+    if (!settings_.followTyping || keyRate_ < 2.5) {
+        return;
+    }
+    if (act_ == Act::Sit || act_ == Act::Look || act_ == Act::Walk || act_ == Act::Think) {
+        BeginAct(Act::Typing);
+    }
+}
+
+void Mate::ApplySeason(double dt)
+{
+    SYSTEMTIME now{};
+    GetLocalTime(&now);
+    const unsigned long mmdd = now.wMonth * 100ul + now.wDay;
+    const bool party = mmdd == 101 || (settings_.partyDate != 0 && settings_.partyDate == mmdd);
+    const bool christmas = now.wMonth == 12;
+    const bool halloween = now.wMonth == 10 && now.wDay >= 24;
+    if (pose_.hat == Hat::None && state_ != State::Peek && state_ != State::SidePeek) {
+        if (party) {
+            pose_.hat = Hat::Party;
+        } else if (christmas) {
+            pose_.hat = Hat::Santa;
+        } else if (halloween) {
+            pose_.hat = Hat::Witch;
+        }
+    }
+    seasonT_ -= dt;
+    if (seasonT_ > 0.0) {
+        return;
+    }
+    if (party) {
+        seasonT_ = 0.3;
+        static const uint32_t kConfetti[4] = {0xE86FB0, 0x4FC3E8, 0xF2C14E, 0x5DBB4A};
+        Spawn('p', RndI(2, kCanvasW - 3), RndI(0, 8), Rnd(-6.0, 6.0), Rnd(8.0, 14.0), 3.0, kConfetti[RndI(0, 3)]);
+    } else if (christmas) {
+        seasonT_ = 0.45;
+        Spawn('p', RndI(2, kCanvasW - 3), RndI(0, 6), Rnd(-3.0, 3.0), Rnd(5.0, 9.0), 4.5, kSnow, 0.0, 0.9);
+    } else {
+        seasonT_ = 1.0;
+    }
 }
 
 LRESULT CALLBACK Mate::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -272,6 +347,28 @@ void Mate::OnCommand(UINT id)
     case kCmdPlayMagic: PlayAct(Act::Magic); break;
     case kCmdPlayCook: PlayAct(Act::Cook); break;
     case kCmdPlayDizzy: PlayAct(Act::Dizzy); break;
+    case kCmdPlayFish: PlayAct(Act::Fish); break;
+    case kCmdPlayRead: PlayAct(Act::Read); break;
+    case kCmdPlayJuggle: PlayAct(Act::Juggle); break;
+    case kCmdPlayWater: PlayAct(Act::Water); break;
+    case kCmdPlayFitness: PlayAct(Act::Fitness); break;
+    case kCmdPlaySkate: PlayAct(Act::Skate); break;
+    case kCmdPlayUmbrella: PlayAct(Act::Umbrella); break;
+    case kCmdPlayCoffee: PlayAct(Act::Coffee); break;
+    case kCmdPlayYawn: PlayAct(Act::Yawn); break;
+    case kCmdFollowTyping:
+        settings_.followTyping = !settings_.followTyping;
+        settings_.Save();
+        UpdateKeyboardHook();
+        break;
+    case kCmdPartyToday: {
+        SYSTEMTIME now{};
+        GetLocalTime(&now);
+        const unsigned long today = now.wMonth * 100ul + now.wDay;
+        settings_.partyDate = settings_.partyDate == today ? 0 : today;
+        settings_.Save();
+        break;
+    }
     default:
         break;
     }
@@ -292,6 +389,11 @@ void Mate::PlayAct(Act a)
 void Mate::Shutdown()
 {
     KillTimer(crab_, kTimerId);
+    if (keyHook_) {
+        UnhookWindowsHookEx(keyHook_);
+        keyHook_ = nullptr;
+        hookOwner_ = nullptr;
+    }
     tray_.Remove();
     DestroyWindow(crab_);
     crab_ = nullptr;
@@ -515,6 +617,15 @@ bool Mate::PickTopSpot(HWND only)
         }
     }
     std::shuffle(order.begin(), order.end(), rng_);
+    if (!only && Rnd() < 0.6) {
+        const HWND fg = GetAncestor(GetForegroundWindow(), GA_ROOT);
+        for (size_t i = 0; i < order.size(); ++i) {
+            if (wins[order[i]].hwnd == fg) {
+                std::swap(order[0], order[i]);
+                break;
+            }
+        }
+    }
     for (size_t idx : order) {
         const RECT& r = wins[idx].rect;
         POINT center{(r.left + r.right) / 2, r.top};
@@ -728,10 +839,19 @@ void Mate::NextActivity()
         Act act;
         int weight;
     };
-    static const Weight kTable[] = {
+    SYSTEMTIME now{};
+    GetLocalTime(&now);
+    const int hour = now.wHour;
+    const bool night = hour >= 21 || hour < 6;
+    const bool evening = hour >= 18 || hour < 6 || (hour >= 13 && hour < 15);
+    const bool morning = hour >= 6 && hour < 11;
+    const Weight kTable[] = {
         {Act::Typing, 5}, {Act::Walk, 3}, {Act::Wave, 1}, {Act::Look, 2}, {Act::Dance, 2},
-        {Act::Sleep, 1},  {Act::Think, 2}, {Act::Sneeze, 1}, {Act::Sit, 2},
+        {Act::Sleep, night ? 4 : 1}, {Act::Think, 2}, {Act::Sneeze, 1}, {Act::Sit, 2},
         {Act::Build, 1},  {Act::Paint, 1}, {Act::Magic, 1}, {Act::Cook, 1},
+        {Act::Fish, 1},   {Act::Read, 1},  {Act::Juggle, 1}, {Act::Water, 1},
+        {Act::Fitness, 1}, {Act::Skate, 1}, {Act::Umbrella, 1},
+        {Act::Coffee, morning ? 3 : 0}, {Act::Yawn, evening ? 2 : 0},
     };
     int total = 0;
     for (const Weight& w : kTable) {
@@ -813,7 +933,50 @@ void Mate::BeginAct(Act a)
     case Act::Think: actDur_ = 2.6; break;
     case Act::Sneeze: actDur_ = 2.0; break;
     case Act::React: actDur_ = 1.2; break;
+    case Act::Fish:
+        timerB_ = 0.9 + Rnd(2.0, 4.0);
+        actDur_ = timerB_ + 3.2;
+        catchKind_ = Rnd() < 0.7 ? 0 : 1;
+        break;
+    case Act::Read: actDur_ = 8.0; break;
+    case Act::Juggle:
+        actDur_ = 6.6;
+        catchKind_ = Rnd() < 0.4 ? 1 : 0;
+        juggleDrop_ = -1;
+        break;
+    case Act::Water: {
+        actDur_ = 7.0;
+        propSide_ = SideWithRoom();
+        SYSTEMTIME now{};
+        GetLocalTime(&now);
+        const unsigned long today = now.wYear * 10000ul + now.wMonth * 100ul + now.wDay;
+        if (settings_.plantDay != today) {
+            settings_.plantDay = today;
+            settings_.plantLevel = 0;
+            settings_.Save();
+        }
+        break;
     }
+    case Act::Fitness: actDur_ = 8.0; break;
+    case Act::Skate: {
+        actDur_ = 6.0;
+        const double w = surfRect_.right - surfRect_.left;
+        const double m = 12.0 * s;
+        dir_ = (w - relX_) >= relX_ ? 1 : -1;
+        targetRel_ = std::clamp(relX_ + dir_ * Rnd(60.0 * s, 120.0 * s), m, std::max(m, w - m));
+        break;
+    }
+    case Act::Umbrella: actDur_ = 9.0; break;
+    case Act::Coffee: actDur_ = 6.0; break;
+    case Act::Yawn: actDur_ = 3.5; break;
+    case Act::Chase: actDur_ = 6.0; break;
+    }
+}
+
+int Mate::SideWithRoom() const
+{
+    const double w = surfRect_.right - surfRect_.left;
+    return (w - relX_) >= relX_ ? 1 : -1;
 }
 
 void Mate::BeginReact(int kind)
@@ -959,10 +1122,20 @@ void Mate::Tick(double dt)
     easel_ = false;
     chuteFold_ = -1;
     stars_ = false;
+    juggle_ = false;
+    plantLevel_ = -1;
+    rainbow_ = 0;
+    bobberY_ = -1;
+    keyRate_ *= std::exp(-dt);
+    if (state_ == State::Active) {
+        CheckTyping();
+    }
     StepState(dt);
+    keyPresses_ = 0;
     if (state_ == State::Hidden) {
         return;
     }
+    ApplySeason(dt);
     if (pose_.eyes == Eyes::Open && blinkT_ < 0.0) {
         pose_.eyes = Eyes::Closed;
     }
@@ -1280,8 +1453,12 @@ void Mate::CheckStare(double dt)
     const bool isNear = std::hypot(dx, dy) < 70.0 * s;
     const bool interruptible = act_ == Act::Sit || act_ == Act::Typing || act_ == Act::Walk || act_ == Act::Look;
     if (isNear && !cursorNear_ && interruptible && stareCooldown_ <= 0.0) {
-        if (Rnd() < 0.3) {
+        const double roll = Rnd();
+        if (roll < 0.3) {
             BeginAct(Act::Stare);
+            stareCooldown_ = Rnd(15.0, 30.0);
+        } else if (roll < 0.5 && dy < 0.0 && dy > -80.0 * s) {
+            BeginAct(Act::Chase);
             stareCooldown_ = Rnd(15.0, 30.0);
         } else {
             stareCooldown_ = 3.0;
@@ -1342,7 +1519,27 @@ void Mate::StepActivity(double dt)
 
     case Act::Typing:
         pose_.keyboard = true;
-        if (timerB_ > 0.0) {
+        if (settings_.followTyping && clock_ - lastKeyT_ < 1.0) {
+            actDur_ = std::max(actDur_, actT_ + 1.5);
+            done = false;
+            timerB_ = 0.0;
+            timerA_ -= dt;
+            if (keyPresses_ > 0) {
+                keyPresses_ = 0;
+                timerA_ = 0.12;
+                actFlag_ = 1 - actFlag_;
+                pressedKey_ = actFlag_ == 0 ? RndI(2, 7) : RndI(8, 13);
+                if (Rnd() < 0.3) {
+                    const char ch = kCodeGlyphs[RndI(0, static_cast<int>(sizeof(kCodeGlyphs)) - 2)];
+                    Spawn(ch, kCrabX + pressedKey_ - 1, kCrabY - 6, Rnd(-4.0, 4.0), Rnd(-15.0, -9.0), Rnd(0.8, 1.3), kCode);
+                }
+            }
+            const bool down = timerA_ > 0.0;
+            pose_.left = (actFlag_ == 0 && down) ? Claw::Down : Claw::Mid;
+            pose_.right = (actFlag_ == 1 && down) ? Claw::Down : Claw::Mid;
+            pose_.pressedKey = down ? pressedKey_ : -1;
+            pose_.lookY = 1;
+        } else if (timerB_ > 0.0) {
             timerB_ -= dt;
             pose_.lookY = -1;
             if (std::fmod(timerB_, 0.5) < 0.2) {
@@ -1430,7 +1627,12 @@ void Mate::StepActivity(double dt)
         break;
     }
 
-    case Act::Sleep:
+    case Act::Sleep: {
+        SYSTEMTIME now{};
+        GetLocalTime(&now);
+        if (now.wHour >= 21 || now.wHour < 6) {
+            pose_.hat = Hat::Nightcap;
+        }
         pose_.eyes = Eyes::Closed;
         pose_.left = Claw::Down;
         pose_.right = Claw::Down;
@@ -1444,6 +1646,24 @@ void Mate::StepActivity(double dt)
             BeginReact(2);
             return;
         }
+        break;
+    }
+
+    case Act::Fish: StepFish(dt); break;
+    case Act::Read: StepRead(dt); break;
+    case Act::Juggle: StepJuggle(dt); break;
+    case Act::Water: StepWater(dt); break;
+    case Act::Fitness: StepFitness(dt); break;
+    case Act::Skate:
+        StepSkate(dt);
+        done = actT_ >= actDur_;
+        break;
+    case Act::Umbrella: StepUmbrella(dt); break;
+    case Act::Coffee: StepCoffee(dt); break;
+    case Act::Yawn: StepYawn(dt); break;
+    case Act::Chase:
+        StepChase(dt);
+        done = actT_ >= actDur_;
         break;
 
     case Act::Think:
@@ -1822,6 +2042,394 @@ void Mate::StepCook(double dt)
     }
 }
 
+void Mate::StepFish(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    const double bite = timerB_;
+    const int water = kFeetRow + 7;
+    pose_.tool = Tool::Rod;
+    pose_.toolSide = 1;
+    pose_.right = Claw::Up;
+    rodX_ = 20;
+    rodY_ = -2;
+    if (t < 0.3) {
+        pose_.right = Claw::High;
+        rodY_ = -4;
+        return;
+    }
+    if (t < 0.9) {
+        bobberY_ = static_cast<int>(std::lround(Lerp(kCrabY - 2, water, Smooth((t - 0.3) / 0.6))));
+        pose_.lookX = 1;
+        pose_.lookY = 1;
+        return;
+    }
+    if (t < bite) {
+        bobberY_ = water + (static_cast<int>(t / 0.6) % 2);
+        pose_.lookX = 1;
+        pose_.lookY = 1;
+        if (std::fmod(t, 2.2) < 0.2) {
+            pose_.body = Body::Crouch;
+        }
+        return;
+    }
+    if (t < bite + 0.5) {
+        bobberY_ = water + 2;
+        pose_.eyes = Eyes::Surprised;
+        pose_.lookX = 1;
+        pose_.lookY = 1;
+        shake_ = (static_cast<int>(t / 0.06) % 2) ? 1 : 0;
+        if (phase_ == 0) {
+            phase_ = 1;
+            Spawn('!', kCrabX + 10, kCrabY - 8, 0.0, -8.0, 0.7, kBang);
+        }
+        return;
+    }
+    if (t < bite + 0.8) {
+        pose_.right = Claw::High;
+        rodY_ = -4;
+        shake_ = -1;
+        bobberY_ = static_cast<int>(std::lround(Lerp(water, kCrabY, (t - bite - 0.5) / 0.3)));
+        if (phase_ == 1) {
+            phase_ = 2;
+            Spawn(catchKind_ == 0 ? 'f' : 'b', kCrabX + 20, kFeetRow, -14.0, -34.0, 1.3,
+                  catchKind_ == 0 ? kFishColor : kBootColor, 50.0);
+        }
+        return;
+    }
+    const double ct = t - bite - 0.8;
+    pose_.lookX = ct < 1.2 ? -1 : 0;
+    pose_.lookY = ct < 0.6 ? -1 : 0;
+    if (ct > 1.2) {
+        if (catchKind_ == 0) {
+            pose_.eyes = Eyes::Happy;
+            if (phase_ == 2) {
+                phase_ = 3;
+                hopV_ = 30.0;
+                Spawn('h', kCrabX + 5, kCrabY - 8, 0.0, -9.0, 1.2, kHeart);
+            }
+        } else {
+            pose_.eyes = ct < 1.7 ? Eyes::Surprised : Eyes::Closed;
+            if (phase_ == 2) {
+                phase_ = 3;
+                Spawn('?', kCrabX + 6, kCrabY - 8, 0.0, -6.0, 1.2, kWhite);
+            }
+        }
+    }
+}
+
+void Mate::StepRead(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    pose_.glasses = true;
+    pose_.left = Claw::Mid;
+    pose_.right = Claw::Mid;
+    if (t < 7.0) {
+        const double c = std::fmod(t, 2.0);
+        pose_.book = c < 0.4 ? std::min(3, static_cast<int>(c / 0.13) + 1) : 0;
+        pose_.lookY = 1;
+        pose_.lookX = static_cast<int>(t / 0.5) % 3 - 1;
+    } else {
+        pose_.book = 0;
+        pose_.eyes = Eyes::Happy;
+    }
+}
+
+void Mate::StepJuggle(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    pose_.lookY = -1;
+    if (catchKind_ == 1 && t >= 4.4 && juggleDrop_ < 0) {
+        juggleDrop_ = 0;
+        Spawn('t', kCrabX + 7, kCrabY - 14, 0.0, 0.0, 0.45, kBalls[0], 120.0);
+    }
+    const bool bonked = juggleDrop_ == 0 && t >= 4.85;
+    if (bonked) {
+        pose_.eyes = Eyes::Dizzy;
+        pose_.frame = static_cast<int>(t / 0.07);
+        stars_ = true;
+        if (phase_ == 0) {
+            phase_ = 1;
+            Spawn('*', kCrabX + 6, kCrabY - 4, 0.0, -10.0, 0.5, kBang);
+            Spawn('t', kCrabX - 1, kCrabY - 8, -8.0, -6.0, 0.8, kBalls[1], 60.0);
+            Spawn('t', kCrabX + 15, kCrabY - 8, 8.0, -6.0, 0.8, kBalls[2], 60.0);
+        }
+    } else if (t < 5.0) {
+        juggle_ = true;
+        const bool a = static_cast<int>(t / 0.18) % 2 == 0;
+        pose_.left = a ? Claw::Up : Claw::Mid;
+        pose_.right = a ? Claw::Mid : Claw::Up;
+        pose_.lookX = static_cast<int>(std::lround(std::cos(2.0 * kPi * std::fmod(t * 0.9, 1.0))));
+    } else {
+        pose_.eyes = Eyes::Happy;
+        pose_.lookY = 0;
+        pose_.body = t < 5.6 ? Body::Crouch : Body::Normal;
+        if (t < 5.4) {
+            pose_.left = Claw::High;
+            pose_.right = Claw::High;
+        }
+    }
+}
+
+void Mate::StepWater(double dt)
+{
+    const double t = actT_;
+    const int side = propSide_;
+    const double plantX = side > 0 ? kCrabX + 22 : kCrabX - 7;
+    if (t < 6.5) {
+        plantLevel_ = static_cast<int>(settings_.plantLevel);
+    }
+    if (phase_ == 0) {
+        phase_ = 1;
+        Puff(plantX, kFeetRow - 3, 5, kWhite);
+    }
+    if (t < 0.4) {
+        return;
+    }
+    pose_.tool = Tool::Can;
+    pose_.toolSide = side;
+    Claw& arm = side > 0 ? pose_.right : pose_.left;
+    arm = Claw::Up;
+    pose_.lookX = side;
+    pose_.lookY = 1;
+    if (t >= 1.0 && t < 4.0) {
+        timerA_ -= dt;
+        if (timerA_ <= 0.0) {
+            timerA_ = 0.12;
+            Spawn('c', plantX + RndI(-1, 0), kCrabY + 1, Rnd(-2.0, 2.0), 10.0, 0.45, kRain, 60.0);
+        }
+    }
+    if (t >= 4.0) {
+        arm = Claw::Mid;
+        pose_.eyes = Eyes::Happy;
+        pose_.lookY = 0;
+        if (phase_ == 1) {
+            phase_ = 2;
+            if (settings_.plantLevel < 5) {
+                ++settings_.plantLevel;
+                settings_.Save();
+            }
+            const int top = kFeetRow - 5 - static_cast<int>(settings_.plantLevel) * 2;
+            Spawn('s', plantX - 1, top - 3, 0.0, -8.0, 0.8, kBang);
+        }
+    }
+    if (t >= 6.5 && phase_ == 2) {
+        phase_ = 3;
+        Puff(plantX, kFeetRow - 3, 6, kWhite);
+    }
+}
+
+void Mate::StepFitness(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    if (t < 4.0) {
+        const int rep = static_cast<int>(t / 0.8);
+        const bool down = std::fmod(t, 0.8) < 0.4;
+        pose_.left = Claw::Down;
+        pose_.right = Claw::Down;
+        pose_.body = down ? Body::Squash : Body::Normal;
+        pose_.eyes = down ? Eyes::Closed : Eyes::Open;
+        if (counter_ != rep + 1) {
+            counter_ = rep + 1;
+            if (rep % 2 == 1) {
+                Spawn('d', kCrabX + 14, kCrabY - 1, 3.0, 6.0, 0.6, kDrop);
+            }
+        }
+    } else if (t < 7.4) {
+        const bool up = std::fmod(t - 4.0, 1.0) > 0.5;
+        pose_.left = up ? Claw::High : Claw::Mid;
+        pose_.right = pose_.left;
+        pose_.barbell = up ? -1 : 4;
+        pose_.eyes = up ? Eyes::Closed : Eyes::Open;
+        shake_ = (up && static_cast<int>(t / 0.05) % 2) ? 1 : 0;
+        const int rep = static_cast<int>(t - 4.0) + 10;
+        if (counter_ != rep) {
+            counter_ = rep;
+            Spawn('d', kCrabX + 15, kCrabY - 2, 3.0, 6.0, 0.6, kDrop);
+        }
+    } else {
+        pose_.eyes = Eyes::Happy;
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+    }
+}
+
+void Mate::StepSkate(double dt)
+{
+    const double t = actT_;
+    const double s = scale_;
+    pose_.skate = true;
+    lift_ = 2;
+    if (phase_ == 0) {
+        relX_ += 45.0 * s * dt * dir_;
+        pose_.lookX = dir_;
+        pose_.left = Claw::Up;
+        pose_.right = Claw::Up;
+        pose_.eyes = Eyes::Happy;
+        const bool reached = (dir_ > 0 && relX_ >= targetRel_) || (dir_ < 0 && relX_ <= targetRel_);
+        if (reached || t > 4.0) {
+            phase_ = 1;
+            hopV_ = 50.0;
+            timerA_ = t;
+        }
+    } else {
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+        pose_.eyes = Eyes::Happy;
+        if (phase_ == 1 && t - timerA_ > 0.2 && hop_ <= 0.0) {
+            phase_ = 2;
+            Spawn('*', kCrabX - 1, kFeetRow - 3, -10.0, -6.0, 0.4, kWhite);
+            Spawn('*', kCrabX + 15, kFeetRow - 3, 10.0, -6.0, 0.4, kWhite);
+            actDur_ = t + 1.0;
+        }
+        if (phase_ == 2) {
+            pose_.left = Claw::Mid;
+            pose_.right = Claw::Mid;
+        }
+    }
+}
+
+void Mate::StepUmbrella(double dt)
+{
+    const double t = actT_;
+    if (t < 4.6) {
+        timerA_ -= dt;
+        while (timerA_ <= 0.0) {
+            timerA_ += 0.04;
+            const int x = RndI(2, kCanvasW - 3);
+            if (t > 0.9 && x >= kCrabX - 1 && x <= kCrabX + 16) {
+                continue;
+            }
+            Spawn('c', x, RndI(0, 6), 0.0, 45.0, 1.0, kRain, 0.0, 0.8);
+        }
+    }
+    if (t < 0.9) {
+        pose_.eyes = Eyes::Closed;
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+        pose_.body = Body::Crouch;
+    } else if (t < 5.2) {
+        pose_.tool = Tool::Umbrella;
+        pose_.toolSide = 1;
+        pose_.right = Claw::Up;
+        pose_.lookY = -1;
+        pose_.lookX = static_cast<int>(t / 1.1) % 3 - 1;
+    } else {
+        double a = std::min(1.0, (t - 5.2) / 0.8);
+        if (t > 8.2) {
+            a = std::max(0.0, (9.0 - t) / 0.8);
+        }
+        rainbow_ = static_cast<int>(220.0 * a);
+        pose_.eyes = Eyes::Happy;
+        pose_.lookY = -1;
+        if (phase_ == 0) {
+            phase_ = 1;
+            hopV_ = 35.0;
+        }
+        if (t < 6.0) {
+            pose_.left = Claw::High;
+            pose_.right = Claw::High;
+        }
+    }
+}
+
+void Mate::StepCoffee(double dt)
+{
+    const double t = actT_;
+    pose_.tool = Tool::Mug;
+    pose_.toolSide = 1;
+    pose_.right = Claw::Mid;
+    const double c = std::fmod(t, 2.0);
+    if (t < 4.0 && c > 1.0 && c < 1.8) {
+        pose_.right = Claw::Up;
+        pose_.eyes = Eyes::Closed;
+    }
+    timerA_ -= dt;
+    if (timerA_ <= 0.0) {
+        timerA_ = 0.7;
+        Spawn('~', kCrabX + 17, kCrabY - 1, Rnd(-2.0, 2.0), -7.0, 1.0, kSteam, 0.0, 0.6);
+    }
+    if (t >= 4.0) {
+        if (phase_ == 0) {
+            phase_ = 1;
+            hopV_ = 35.0;
+            Spawn('!', kCrabX + 6, kCrabY - 8, 0.0, -8.0, 0.8, kBang);
+        }
+        pose_.eyes = t < 4.6 ? Eyes::Surprised : Eyes::Happy;
+        if (t < 4.6) {
+            shake_ = (static_cast<int>(t / 0.05) % 2) ? 1 : -1;
+        }
+    }
+}
+
+void Mate::StepYawn(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    if (t < 0.6) {
+        pose_.left = Claw::Up;
+        pose_.right = Claw::Up;
+        pose_.eyes = Eyes::Closed;
+        pose_.mouth = t > 0.3;
+    } else if (t < 2.0) {
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+        pose_.eyes = Eyes::Closed;
+        pose_.mouth = true;
+    } else if (t < 2.6) {
+        pose_.eyes = Eyes::Closed;
+        pose_.body = Body::Crouch;
+    } else if (t < 3.0) {
+        pose_.eyes = Eyes::Closed;
+    }
+}
+
+void Mate::StepChase(double dt)
+{
+    const double s = scale_;
+    POINT c{};
+    GetCursorPos(&c);
+    if (std::abs(c.x - footX_) > 250.0 * s || c.y > footY_ + 40.0 * s || c.y < footY_ - 200.0 * s) {
+        actDur_ = actT_;
+        return;
+    }
+    const double w = surfRect_.right - surfRect_.left;
+    const double m = 10.0 * s;
+    const double target = std::clamp(c.x - static_cast<double>(surfRect_.left), m, std::max(m, w - m));
+    const double diff = target - relX_;
+    const bool above = c.y < footY_ && c.y > footY_ - 80.0 * s;
+    if (phase_ == 0) {
+        pose_.lookY = -1;
+        if (std::abs(diff) > 3.0 * s) {
+            relX_ += Sign(diff) * std::min(std::abs(diff), 40.0 * s * dt);
+            const int ph = static_cast<int>(actT_ / 0.07) % 4;
+            pose_.legs = ph == 1 ? Legs::LiftLeft : (ph == 3 ? Legs::LiftRight : Legs::Stand);
+            pose_.lookX = Sign(diff);
+        } else {
+            pose_.left = Claw::Up;
+            pose_.right = Claw::Up;
+        }
+        if (std::abs(c.x - footX_) < 8.0 * s && above && actT_ > 0.5) {
+            phase_ = 1;
+            hopV_ = 55.0;
+        }
+    } else if (phase_ == 1) {
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+        pose_.eyes = Eyes::Happy;
+        if (hop_ <= 0.0 && hopV_ == 0.0) {
+            phase_ = 2;
+            Spawn('h', kCrabX + 5, kCrabY - 8, 0.0, -9.0, 1.2, kHeart);
+            actDur_ = actT_ + 0.8;
+        }
+    } else {
+        pose_.eyes = Eyes::Happy;
+    }
+}
+
 void Mate::Render()
 {
     if (!bits_) {
@@ -1836,12 +2444,41 @@ void Mate::Render()
     if (easel_) {
         canvas_.DrawEasel(easelSide_ > 0 ? kCrabX + 18 : kCrabX - 11, kCrabY - 1, painting_, revealed_);
     }
+    if (rainbow_ > 0) {
+        canvas_.DrawRainbow(kCrabX + 8, kCrabY + 6, rainbow_);
+    }
+    if (plantLevel_ >= 0) {
+        canvas_.DrawPlant(propSide_ > 0 ? kCrabX + 20 : kCrabX - 9, kFeetRow - 1, plantLevel_);
+    }
+    if (bobberY_ >= 0) {
+        canvas_.DrawLine(ox + rodX_, oy + rodY_, ox + rodX_ + 2, bobberY_, 0xDDDDDD, 200);
+        canvas_.Put(ox + rodX_ + 2, bobberY_, kBobber);
+        canvas_.Put(ox + rodX_ + 2, bobberY_ + 1, kWhite);
+    }
     if (chuteFold_ == 2) {
         canvas_.DrawParachute(ox + 8, oy - 14, 2);
     }
     canvas_.DrawCrab(pose_, ox, oy);
     if (chuteFold_ == 0 || chuteFold_ == 1) {
         canvas_.DrawParachute(ox + 8, oy - 14, chuteFold_);
+    }
+    if (juggle_) {
+        for (int k = 0; k < 3; ++k) {
+            if (k == juggleDrop_) {
+                continue;
+            }
+            const double ph = 2.0 * std::fmod(actT_ * 0.9 + k / 3.0, 1.0);
+            double x = 0.0;
+            double y = 0.0;
+            if (ph < 1.0) {
+                x = ox + 0.5 + 14.0 * ph;
+                y = oy - 1.0 - 12.0 * std::sin(kPi * ph);
+            } else {
+                x = ox + 14.5 - 14.0 * (ph - 1.0);
+                y = oy - 1.0 - 4.0 * std::sin(kPi * (ph - 1.0));
+            }
+            canvas_.DrawGlyph('t', static_cast<int>(std::lround(x)), static_cast<int>(std::lround(y)), kBalls[k], 255);
+        }
     }
     if (stars_) {
         const int sy = pose_.hat != Hat::None ? oy - 6 : oy - 3;
@@ -1865,7 +2502,8 @@ void Mate::Render()
 
     SIZE size{w, h};
     POINT src{0, 0};
-    POINT dst{static_cast<LONG>(std::lround(footX_)) - kFootLX * scale_, static_cast<LONG>(std::lround(footY_)) - h};
+    POINT dst{static_cast<LONG>(std::lround(footX_)) - kFootLX * scale_,
+              static_cast<LONG>(std::lround(footY_)) - kFeetRow * scale_};
     BLENDFUNCTION bf{AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
     UpdateLayeredWindow(crab_, nullptr, &dst, &size, memDc_, &src, 0, &bf, ULW_ALPHA);
 }
