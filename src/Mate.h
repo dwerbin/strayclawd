@@ -1,0 +1,147 @@
+#pragma once
+
+#include <windows.h>
+#include <cstdint>
+#include <random>
+#include <vector>
+
+#include "Canvas.h"
+#include "Scanner.h"
+#include "Settings.h"
+#include "Tray.h"
+
+/** The crab: its layered window, its tray icon and its behavior. */
+class Mate {
+public:
+    static constexpr const wchar_t* kCrabClass = L"ClaudePooCrab";
+    static constexpr const wchar_t* kTrayClass = L"ClaudePooTray";
+    static constexpr UINT kMsgTray = WM_APP + 1;
+    static constexpr UINT kMsgShowNow = WM_APP + 2;
+
+    bool Create(HINSTANCE instance);
+
+private:
+    enum class State { Hidden, SidePeek, Peek, Emerge, Active, Retreat, Falling, Dragged, Land };
+    enum class Act { Sit, Typing, Walk, Wave, Look, Dance, Sleep, Think, Sneeze, React };
+    enum class Surface { None, Window, Ground };
+    enum class ZMode { Free, Above, Behind };
+
+    struct Particle {
+        char ch;
+        double x, y, vx, vy, life;
+        uint32_t color;
+    };
+
+    static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
+    void OnCommand(UINT id);
+    void Shutdown();
+
+    void Tick(double dt);
+    void StepState(double dt);
+    void StepActivity(double dt);
+    void Render();
+    void UpdateZ(bool force);
+    void SetZ(ZMode mode);
+    void SetScale(int scale);
+    int ScaleAt(POINT pt) const;
+
+    void Appear(bool allowSide);
+    void Show();
+    void Hide(double delay = -1.0);
+    bool PickTopSpot(HWND only);
+    bool PickSideSpot();
+    void PickGroundSpot();
+    bool FollowSurface();
+    bool TryLand(double prevY);
+
+    void Enter(State s);
+    void StartActivities();
+    void NextActivity();
+    void BeginAct(Act a);
+    void BeginReact(int kind);
+    void StartRetreat(bool fast);
+    void StartFall(double vx, double vy);
+    void OnClick();
+    void ShowNow();
+    void HideNow();
+    double NextDelay();
+
+    void Spawn(char ch, double x, double y, double vx, double vy, double life, uint32_t color);
+    double Rnd();
+    double Rnd(double a, double b);
+    int RndI(int a, int b);
+
+    HINSTANCE instance_ = nullptr;
+    HWND crab_ = nullptr;
+    HWND trayWnd_ = nullptr;
+    HICON icon_ = nullptr;
+    UINT taskbarCreated_ = 0;
+    HDC memDc_ = nullptr;
+    HBITMAP dib_ = nullptr;
+    HGDIOBJ oldBmp_ = nullptr;
+    void* bits_ = nullptr;
+    int scale_ = 0;
+    LARGE_INTEGER qpcFreq_{};
+    LARGE_INTEGER qpcLast_{};
+
+    Canvas canvas_;
+    Scanner scanner_;
+    Settings settings_;
+    Tray tray_;
+    std::mt19937 rng_;
+
+    State state_ = State::Hidden;
+    double stateT_ = 0.0;
+    int stateFlag_ = 0;
+    Act act_ = Act::Sit;
+    double actT_ = 0.0;
+    double actDur_ = 0.0;
+    int actsLeft_ = 0;
+    int actFlag_ = 0;
+    int counter_ = 0;
+    int side_ = 0;
+    int dir_ = 1;
+    int pressedKey_ = -1;
+    int reactKind_ = 0;
+    double timerA_ = 0.0;
+    double timerB_ = 0.0;
+    double targetRel_ = 0.0;
+
+    Surface surface_ = Surface::None;
+    HWND surfHwnd_ = nullptr;
+    RECT surfRect_{};
+    double edge_ = 0.0;
+    double relX_ = 0.0;
+    double relY_ = 0.0;
+    double footX_ = 0.0;
+    double footY_ = 0.0;
+    double vx_ = 0.0;
+    double vy_ = 0.0;
+    double fallScan_ = 0.0;
+
+    ZMode zmode_ = ZMode::Free;
+    bool zTopDone_ = false;
+
+    double hideNext_ = 3.0;
+    bool shy_ = false;
+    bool fastRetreat_ = false;
+
+    Pose pose_;
+    double hop_ = 0.0;
+    double hopV_ = 0.0;
+    int shake_ = 0;
+    int bubble_ = -1;
+    double blinkT_ = 3.0;
+    double clock_ = 0.0;
+    std::vector<Particle> particles_;
+
+    bool mouseDown_ = false;
+    bool dragging_ = false;
+    POINT downPt_{};
+    POINT lastMouse_{};
+    double grabDx_ = 0.0;
+    double grabDy_ = 0.0;
+    double mouseVx_ = 0.0;
+    double mouseVy_ = 0.0;
+};
