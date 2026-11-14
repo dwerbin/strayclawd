@@ -6,7 +6,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
 {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
-    HANDLE mutex = CreateMutexW(nullptr, TRUE, L"Local\\ClaudePooSingleInstance");
+    HANDLE mutex = CreateMutexW(nullptr, TRUE, L"Local\\StrayClawdSingleInstance");
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         if (HWND other = FindWindowW(Mate::kTrayClass, nullptr)) {
             PostMessageW(other, Mate::kMsgShowNow, 0, 0);

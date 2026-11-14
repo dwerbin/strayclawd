@@ -13,8 +13,8 @@
 /** The crab: its layered window, its tray icon and its behavior. */
 class Mate {
 public:
-    static constexpr const wchar_t* kCrabClass = L"ClaudePooCrab";
-    static constexpr const wchar_t* kTrayClass = L"ClaudePooTray";
+    static constexpr const wchar_t* kCrabClass = L"StrayClawdCrab";
+    static constexpr const wchar_t* kTrayClass = L"StrayClawdTray";
     static constexpr UINT kMsgTray = WM_APP + 1;
     static constexpr UINT kMsgShowNow = WM_APP + 2;
 

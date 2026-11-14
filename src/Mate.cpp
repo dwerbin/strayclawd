@@ -88,8 +88,8 @@ bool Mate::Create(HINSTANCE instance)
         return false;
     }
 
-    trayWnd_ = CreateWindowExW(0, kTrayClass, L"ClaudePoo", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, instance, this);
-    crab_ = CreateWindowExW(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, kCrabClass, L"ClaudePoo", WS_POPUP,
+    trayWnd_ = CreateWindowExW(0, kTrayClass, L"StrayClawd", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, instance, this);
+    crab_ = CreateWindowExW(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, kCrabClass, L"StrayClawd", WS_POPUP,
                             0, 0, 1, 1, nullptr, nullptr, instance, this);
     if (!trayWnd_ || !crab_) {
         return false;

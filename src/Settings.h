@@ -2,7 +2,7 @@
 
 enum class Frequency { Rare = 0, Normal = 1, Often = 2 };
 
-/** User settings stored in HKCU\Software\ClaudePoo. */
+/** User settings stored in HKCU\Software\StrayClawd. */
 struct Settings {
     Frequency frequency = Frequency::Normal;
     bool paused = false;

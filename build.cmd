@@ -31,4 +31,4 @@ if not defined WindowsSdkDir (
 cmake -S "%~dp0." -B "%~dp0build" -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release || exit /b 1
 cmake --build "%~dp0build" || exit /b 1
 echo.
-echo Built: %~dp0build\claudepoo.exe
+echo Built: %~dp0build\clawdmate.exe

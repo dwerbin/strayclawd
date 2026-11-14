@@ -11,7 +11,7 @@ void Tray::Add(HWND owner, HICON icon, UINT callbackMsg)
     nid_.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid_.uCallbackMessage = callbackMsg;
     nid_.hIcon = icon;
-    wcscpy_s(nid_.szTip, L"ClaudePoo");
+    wcscpy_s(nid_.szTip, L"StrayClawd");
     added_ = Shell_NotifyIconW(NIM_ADD, &nid_) != FALSE;
 }
 

@@ -5,9 +5,9 @@
 
 namespace {
 
-constexpr wchar_t kKey[] = L"Software\\ClaudePoo";
+constexpr wchar_t kKey[] = L"Software\\StrayClawd";
 constexpr wchar_t kRunKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-constexpr wchar_t kRunValue[] = L"ClaudePoo";
+constexpr wchar_t kRunValue[] = L"StrayClawd";
 
 DWORD ReadDword(const wchar_t* name, DWORD fallback)
 {
