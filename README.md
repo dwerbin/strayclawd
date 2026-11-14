@@ -10,6 +10,10 @@ Shimeji: the small orange pixel crab of Claude appears at random from behind one
 windows, sits on its title bar, types on a tiny keyboard and does small cute things, then
 hides again.
 
+<p align="center">
+  <img src="art/strayclawd.gif" alt="StrayClawd desktop pet animations: peeking, typing, dancing, riding a broom, a flower that explodes, a skateboard fall and a rocket takeoff" width="280">
+</p>
+
 ## Download
 
 Get `clawdmate.exe` from the [latest release](https://github.com/dwerbin/strayclawd/releases/latest)
@@ -196,4 +200,6 @@ Pure Win32 + GDI, C++20, no external library.
 
 The pictures are drawn by the same code as the app (`src/Canvas.cpp`). To draw them again:
 `cmake --build build --target render_poses`, then `build\render_poses.exe art\poses`
-(after `build.cmd`, in a shell where the MSVC tools are set up).
+(after `build.cmd`, in a shell where the MSVC tools are set up). For the animated GIF:
+`build\render_poses.exe --clips frames.bin`, then
+`python tools\make_gif.py frames.bin art\strayclawd.gif` (Python 3, no extra package).

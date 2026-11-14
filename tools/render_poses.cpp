@@ -1,6 +1,8 @@
 #include <windows.h>
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <functional>
 #include <string>
@@ -19,7 +21,7 @@ namespace {
 
 constexpr int kW = 56;
 constexpr int kH = 60;
-constexpr int kScale = 4;
+int gScale = 4;
 constexpr int kTop = 8;
 constexpr int kBottom = 56;
 constexpr int kCrabX = 20;
@@ -549,9 +551,9 @@ std::vector<Scene> Scenes()
 
 void FillRows(std::vector<uint32_t>& img, int y0, int y1, uint32_t rgb, int x1 = kW)
 {
-    const int w = kW * kScale;
-    for (int y = y0 * kScale; y < y1 * kScale; ++y) {
-        for (int x = 0; x < x1 * kScale; ++x) {
+    const int w = kW * gScale;
+    for (int y = y0 * gScale; y < y1 * gScale; ++y) {
+        for (int x = 0; x < x1 * gScale; ++x) {
             img[static_cast<size_t>(y) * w + x] = 0xFF000000 | rgb;
         }
     }
@@ -567,8 +569,8 @@ void Background(std::vector<uint32_t>& img, int edgeX)
 
 void Over(std::vector<uint32_t>& img, const uint32_t* src, int fromRow, int toRow)
 {
-    const int w = kW * kScale;
-    for (int y = fromRow * kScale; y < toRow * kScale; ++y) {
+    const int w = kW * gScale;
+    for (int y = fromRow * gScale; y < toRow * gScale; ++y) {
         for (int x = 0; x < w; ++x) {
             const size_t i = static_cast<size_t>(y) * w + x;
             const uint32_t s = src[i];
@@ -603,10 +605,287 @@ bool PngEncoder(CLSID* clsid)
     return false;
 }
 
+double Hash(int i)
+{
+    unsigned x = static_cast<unsigned>(i) * 2654435761u;
+    x ^= x >> 13;
+    x *= 0x5bd1e995u;
+    x ^= x >> 15;
+    return (x & 0xFFFF) / 65536.0;
+}
+
+double Ease(double t)
+{
+    t = std::clamp(t, 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
+
+void Particle(Canvas& c, char g, double x0, double y0, double vx, double vy, double ay, double life, double dt,
+              uint32_t col, double a = 1.0)
+{
+    if (dt < 0.0 || dt >= life) {
+        return;
+    }
+    const double x = x0 + vx * dt;
+    const double y = y0 + vy * dt + 0.5 * ay * dt * dt;
+    const int alpha = static_cast<int>(255.0 * std::min(1.0, (life - dt) / 0.35) * a);
+    c.DrawGlyph(g, static_cast<int>(std::lround(x)), static_cast<int>(std::lround(y)), col, alpha);
+}
+
+void SpinStars(Canvas& c, int ox, int oy, double t)
+{
+    for (int k = 0; k < 3; ++k) {
+        const double a = t * 5.0 + k * 2.0 * kPi / 3.0;
+        const int x = ox + 7 + static_cast<int>(std::lround(8.0 * std::cos(a)));
+        const int y = oy - 3 + static_cast<int>(std::lround(2.0 * std::sin(a)));
+        c.DrawGlyph('s', x - 1, y - 1, kBang, 255);
+    }
+}
+
+/** One short animated clip: duration and a frame function of the time. */
+struct Clip {
+    double duration;
+    std::function<void(double t, Canvas& c, int& edgeX, bool& clipBelow)> frame;
+};
+
+std::vector<Clip> Clips()
+{
+    std::vector<Clip> clips;
+
+    clips.push_back({2.6, [](double t, Canvas& c, int&, bool& clipBelow) {
+        clipBelow = true;
+        Pose p;
+        int oy = kCrabY + 10;
+        if (t < 0.6) {
+            oy = kCrabY + 10 - static_cast<int>(std::lround(5.0 * Ease(t / 0.6)));
+        } else if (t < 1.4) {
+            oy = kCrabY + 5;
+            p.lookX = t < 1.0 ? -1 : 1;
+        } else if (t < 1.7) {
+            const double s = (t - 1.4) / 0.3;
+            oy = kCrabY + static_cast<int>(std::lround(5.0 * (1.0 - s) - 4.0 * std::sin(kPi * s)));
+        } else {
+            oy = kCrabY;
+            p.eyes = Eyes::Happy;
+            p.lookX = 1;
+            p.right = static_cast<int>(t / 0.18) % 2 ? Claw::High : Claw::Up;
+        }
+        c.DrawCrab(p, kCrabX, oy);
+        Particle(c, 'h', kCrabX + 13, kCrabY - 6, 0.0, -9.0, 0.0, 1.0, t - 1.8, kHeart);
+    }});
+
+    clips.push_back({2.2, [](double t, Canvas& c, int&, bool&) {
+        Pose p;
+        p.keyboard = true;
+        p.lookY = 1;
+        const int k = static_cast<int>(t / 0.12);
+        const bool down = std::fmod(t, 0.12) < 0.08;
+        p.left = (k % 2 == 0 && down) ? Claw::Down : Claw::Mid;
+        p.right = (k % 2 == 1 && down) ? Claw::Down : Claw::Mid;
+        p.pressedKey = down ? (k % 2 == 0 ? 2 + (k * 3) % 6 : 8 + (k * 5) % 6) : -1;
+        c.DrawCrab(p, kCrabX, kCrabY);
+        const char glyphs[] = "{};<>/=01";
+        for (int i = 0; i < 10; ++i) {
+            Particle(c, glyphs[i % 9], kCrabX + 1 + (i * 5) % 13, kCrabY - 6, (Hash(i) - 0.5) * 8.0, -12.0, 0.0, 1.1,
+                     t - 0.2 * i, kCode);
+        }
+    }});
+
+    clips.push_back({2.2, [](double t, Canvas& c, int&, bool&) {
+        Pose p;
+        const int beat = static_cast<int>(t / 0.28);
+        const bool even = beat % 2 == 0;
+        p.body = even ? Body::Crouch : Body::Normal;
+        p.left = even ? Claw::High : Claw::Mid;
+        p.right = even ? Claw::Mid : Claw::High;
+        p.legs = even ? Legs::LiftLeft : Legs::LiftRight;
+        p.eyes = (beat / 2) % 2 ? Eyes::Happy : Eyes::Open;
+        c.DrawCrab(p, kCrabX + (even ? -1 : 1), kCrabY);
+        const int xs[4] = {-3, 14, 4, 10};
+        for (int i = 0; i < 5; ++i) {
+            Particle(c, 'n', kCrabX + xs[i % 4], kCrabY - 3, (Hash(i + 20) - 0.5) * 10.0, -12.0, 0.0, 1.2,
+                     t - 0.45 * i, kNote);
+        }
+    }});
+
+    clips.push_back({2.6, [](double t, Canvas& c, int&, bool&) {
+        auto lift = [](double tt) { return 12.0 * std::sin(kPi * std::clamp(tt / 2.6, 0.0, 1.0)); };
+        Pose p;
+        p.roundGlasses = true;
+        p.scar = true;
+        p.scarf = true;
+        p.broom = true;
+        p.legs = Legs::Spread;
+        p.eyes = Eyes::Happy;
+        const int oy = kCrabY - static_cast<int>(std::lround(lift(t)));
+        c.DrawCrab(p, kCrabX, oy);
+        for (int i = 0; i < 16; ++i) {
+            const double ti = 0.15 * i;
+            Particle(c, 'p', kCrabX + 21, kCrabY + 8 - lift(ti), 7.0, (Hash(i + 40) - 0.5) * 4.0, 0.0, 0.7, t - ti,
+                     kBang, 0.9);
+        }
+    }});
+
+    clips.push_back({3.4, [](double t, Canvas& c, int&, bool&) {
+        const int plantX = kCrabX + 22;
+        const bool boom = t >= 1.6;
+        c.DrawPlant(kCrabX + 20, kFeetRow - 1, boom ? 0 : 5);
+        Pose p;
+        if (t < 1.4) {
+            p.tool = Tool::Can;
+            p.right = Claw::Up;
+            p.lookX = 1;
+            p.lookY = 1;
+        } else if (t < 1.6) {
+            p.tool = Tool::Can;
+            p.eyes = Eyes::Happy;
+        } else if (t < 2.3) {
+            p.tool = Tool::Can;
+            p.eyes = Eyes::Surprised;
+            p.left = Claw::High;
+            p.right = Claw::High;
+        } else {
+            p.eyes = Eyes::Dizzy;
+            p.frame = static_cast<int>(t / 0.07);
+        }
+        const int ox = kCrabX + ((t >= 1.6 && t < 2.3) ? (static_cast<int>(t / 0.05) % 2 ? 1 : -1) : 0);
+        c.DrawCrab(p, ox, kCrabY);
+        for (int i = 0; i < 15; ++i) {
+            Particle(c, 'c', plantX - (i % 2), kCrabY + 1, 0.0, 10.0, 60.0, 0.25, t - 0.2 - 0.08 * i, 0x7FB2FF);
+        }
+        if (boom) {
+            const double dt = t - 1.6;
+            const double fy = kFeetRow - 15;
+            for (int i = 0; i < 14; ++i) {
+                const double a = 2.0 * kPi * i / 14.0;
+                const double v = 18.0 + 12.0 * Hash(i + 60);
+                Particle(c, 'p', plantX, fy, std::cos(a) * v, std::sin(a) * v * 0.8 - 8.0, 45.0, 1.1, dt,
+                         i % 3 == 0 ? kNote : 0xE86FB0);
+            }
+            for (int i = 0; i < 3; ++i) {
+                Particle(c, '*', plantX - 1 + (i - 1) * 3, fy - 1, (i - 1) * 6.0, -7.0, 0.0, 0.5, dt, kBang);
+            }
+            for (int i = 0; i < 4; ++i) {
+                Particle(c, 't', plantX - 2 + i, fy + 2 - i, (i - 1.5) * 2.0, -5.0, 0.0, 1.4, dt, 0xBDBDBD, 0.8);
+            }
+        }
+        if (t >= 2.3) {
+            SpinStars(c, ox, kCrabY, t);
+        }
+    }});
+
+    clips.push_back({3.8, [](double t, Canvas& c, int& edgeX, bool&) {
+        edgeX = 40;
+        const double stopT = 1.6;
+        const double ox = 2.0 + 22.0 * std::min(t, stopT);
+        Pose p;
+        double oy = kCrabY - 2;
+        if (t < stopT) {
+            p.skate = true;
+            p.left = Claw::Up;
+            p.right = Claw::Up;
+            p.eyes = Eyes::Happy;
+            p.lookX = 1;
+        } else if (t < 2.1) {
+            p.lookX = 1;
+        } else if (t < 2.6) {
+            p.lookY = 1;
+        } else if (t < 3.1) {
+            p.eyes = Eyes::Surprised;
+        } else {
+            const double ft = t - 3.1;
+            const bool ph = static_cast<int>(ft / 0.08) % 2 == 0;
+            p.eyes = Eyes::Surprised;
+            p.left = ph ? Claw::High : Claw::Up;
+            p.right = ph ? Claw::Up : Claw::High;
+            p.legs = ph ? Legs::LiftLeft : Legs::LiftRight;
+            oy += 0.5 * 200.0 * ft * ft;
+        }
+        const int shake = (t >= 2.6 && t < 3.1) ? (static_cast<int>(t / 0.05) % 2 ? 1 : -1) : 0;
+        c.DrawCrab(p, static_cast<int>(std::lround(ox)) + shake, static_cast<int>(std::lround(oy)));
+        Particle(c, 'k', ox + 2.0, kFeetRow, 45.0, 0.0, 150.0, 1.5, t - stopT, 0xB07A3B);
+        Particle(c, '!', ox + 6.0, kCrabY - 11, 0.0, -8.0, 0.0, 0.8, t - 2.6, kBang);
+    }});
+
+    clips.push_back({3.0, [](double t, Canvas& c, int&, bool&) {
+        const double rise = t > 1.3 ? 0.5 * 90.0 * (t - 1.3) * (t - 1.3) : 0.0;
+        const int oy = kCrabY - 2 - static_cast<int>(std::lround(rise));
+        const int shake = (t >= 0.9 && t < 1.3) ? (static_cast<int>(t / 0.04) % 2 ? 1 : -1) : 0;
+        const int flame = t >= 0.9 ? 1 + static_cast<int>(t / 0.06) % 2 : 0;
+        c.DrawRocket(kCrabX + 1 + shake, oy - 10, 4, flame);
+        Pose p;
+        p.left = Claw::High;
+        p.right = Claw::High;
+        p.lookY = -1;
+        p.eyes = t < 0.9 ? Eyes::Open : (t < 1.3 ? Eyes::Surprised : Eyes::Happy);
+        c.DrawCrab(p, kCrabX + shake, oy);
+        for (int n = 0; n < 3; ++n) {
+            Particle(c, static_cast<char>('3' - n), kCrabX + 6, kCrabY - 18, 0.0, -4.0, 0.0, 0.3, t - 0.3 * n, kWhite);
+        }
+        for (int i = 0; i < 30; ++i) {
+            const double ti = 0.9 + 0.06 * i;
+            const double r = ti > 1.3 ? 0.5 * 90.0 * (ti - 1.3) * (ti - 1.3) : 0.0;
+            Particle(c, i % 2 ? 'p' : 't', kCrabX + 5 + 6.0 * Hash(i + 80), kFeetRow + 1 - r, (Hash(i + 90) - 0.5) * 16.0,
+                     -3.0, 0.0, 1.2, t - ti, 0xBDBDBD, 0.85);
+        }
+    }});
+
+    return clips;
+}
+
+int WriteClips(const std::wstring& path)
+{
+    const int w = kW * gScale;
+    const int h = kH * gScale;
+    const int outH = (kBottom - kTop) * gScale;
+    std::vector<std::vector<uint8_t>> frames;
+    for (const Clip& clip : Clips()) {
+        const int n = static_cast<int>(std::lround(clip.duration / 0.1));
+        for (int f = 0; f < n; ++f) {
+            Canvas c;
+            c.Resize(kW, kH, gScale);
+            int edgeX = kW;
+            bool clipBelow = false;
+            clip.frame(f * 0.1, c, edgeX, clipBelow);
+            std::vector<uint32_t> img(static_cast<size_t>(w) * h);
+            Background(img, edgeX);
+            Over(img, c.Data(), 0, clipBelow ? kFeetRow : kH);
+            std::vector<uint8_t> rgb(static_cast<size_t>(w) * outH * 3);
+            for (int y = 0; y < outH; ++y) {
+                for (int x = 0; x < w; ++x) {
+                    const uint32_t v = img[static_cast<size_t>(y + kTop * gScale) * w + x];
+                    uint8_t* d = &rgb[(static_cast<size_t>(y) * w + x) * 3];
+                    d[0] = static_cast<uint8_t>(v >> 16);
+                    d[1] = static_cast<uint8_t>(v >> 8);
+                    d[2] = static_cast<uint8_t>(v);
+                }
+            }
+            frames.push_back(std::move(rgb));
+        }
+    }
+    FILE* out = nullptr;
+    if (_wfopen_s(&out, path.c_str(), L"wb") != 0 || !out) {
+        std::fwprintf(stderr, L"Cannot write %ls\n", path.c_str());
+        return 1;
+    }
+    const int32_t header[3] = {w, outH, static_cast<int32_t>(frames.size())};
+    std::fwrite(header, sizeof(header), 1, out);
+    for (const auto& f : frames) {
+        std::fwrite(f.data(), 1, f.size(), out);
+    }
+    std::fclose(out);
+    std::wprintf(L"%ls: %d frames of %dx%d\n", path.c_str(), static_cast<int>(frames.size()), w, outH);
+    return 0;
+}
+
 }
 
 int wmain(int argc, wchar_t** argv)
 {
+    if (argc > 2 && std::wstring(argv[1]) == L"--clips") {
+        gScale = 5;
+        return WriteClips(argv[2]);
+    }
     const std::wstring outDir = argc > 1 ? argv[1] : L".";
     Gdiplus::GdiplusStartupInput in;
     ULONG_PTR token = 0;
@@ -616,12 +895,12 @@ int wmain(int argc, wchar_t** argv)
         std::fwprintf(stderr, L"PNG encoder not found\n");
         return 1;
     }
-    const int w = kW * kScale;
-    const int h = kH * kScale;
+    const int w = kW * gScale;
+    const int h = kH * gScale;
     int failed = 0;
     for (const Scene& sc : Scenes()) {
         Canvas c;
-        c.Resize(kW, kH, kScale);
+        c.Resize(kW, kH, gScale);
         const int ox = kCrabX + sc.dx;
         const int oy = kCrabY + sc.dy;
         if (sc.back) {
@@ -635,8 +914,8 @@ int wmain(int argc, wchar_t** argv)
         Background(img, sc.edgeX);
         Over(img, c.Data(), 0, sc.peek ? kFeetRow : kH);
 
-        Gdiplus::Bitmap bmp(w, (kBottom - kTop) * kScale, w * 4, PixelFormat32bppARGB,
-                            reinterpret_cast<BYTE*>(img.data() + static_cast<size_t>(kTop) * kScale * w));
+        Gdiplus::Bitmap bmp(w, (kBottom - kTop) * gScale, w * 4, PixelFormat32bppARGB,
+                            reinterpret_cast<BYTE*>(img.data() + static_cast<size_t>(kTop) * gScale * w));
         const std::string name(sc.name);
         const std::wstring path = outDir + L"\\" + std::wstring(name.begin(), name.end()) + L".png";
         if (bmp.Save(path.c_str(), &png, nullptr) != Gdiplus::Ok) {
