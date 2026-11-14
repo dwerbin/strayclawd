@@ -29,6 +29,8 @@ enum TrayCommand : UINT {
     kCmdPlayUmbrella = 1043,
     kCmdPlayCoffee = 1044,
     kCmdPlayYawn = 1045,
+    kCmdPlayWizard = 1046,
+    kCmdPlayGreyWizard = 1047,
     kCmdFollowTyping = 1022,
     kCmdPartyToday = 1023,
     kCmdQuit = 1099,

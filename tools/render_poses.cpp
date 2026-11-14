@@ -46,6 +46,9 @@ constexpr uint32_t kRain = 0x7FB2FF;
 constexpr uint32_t kBobber = 0xE8505B;
 constexpr uint32_t kBalls[3] = {0xE8505B, 0xF2C14E, 0x3E7CD8};
 constexpr uint32_t kConfetti[4] = {0xE86FB0, 0x4FC3E8, 0xF2C14E, 0x5DBB4A};
+constexpr uint32_t kSpellRed = 0xFF5A5A;
+constexpr uint32_t kFishColor = 0x5FA8D3;
+constexpr uint32_t kBootColor = 0x6B4A2B;
 
 /** One picture: what is drawn before, the crab pose, what is drawn after. */
 struct Scene {
@@ -77,7 +80,7 @@ void Rain(Canvas& c, bool skipCrab)
         const int x = 2 + static_cast<int>((seed >> 8) % (kW - 4));
         seed = seed * 1103515245u + 12345u;
         const int y = static_cast<int>((seed >> 8) % (kFeetRow - 6));
-        if (skipCrab && x >= kCrabX - 1 && x <= kCrabX + 16) {
+        if (skipCrab && x >= kCrabX + 2 && x <= kCrabX + 26) {
             continue;
         }
         c.DrawGlyph('c', x, y, kRain, 200);
@@ -202,6 +205,56 @@ std::vector<Scene> Scenes()
         };
     }
     {
+        Scene& sc = add("young_wizard");
+        sc.pose.roundGlasses = true;
+        sc.pose.scar = true;
+        sc.pose.scarf = true;
+        sc.pose.tool = Tool::Wand;
+        sc.pose.woodWand = true;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.lookX = 1;
+        sc.front = [](Canvas& c, int, int) {
+            c.DrawGlyph('s', kCrabX + 29, kCrabY - 2, kSpellRed, 255);
+            for (int j = 1; j <= 3; ++j) {
+                c.Put(kCrabX + 29 - j, kCrabY - 1, kSpellRed, 230 - 60 * j);
+            }
+        };
+    }
+    {
+        Scene& sc = add("broom");
+        sc.pose.roundGlasses = true;
+        sc.pose.scar = true;
+        sc.pose.scarf = true;
+        sc.pose.broom = true;
+        sc.pose.legs = Legs::Spread;
+        sc.pose.eyes = Eyes::Happy;
+        sc.dy = -10;
+        sc.front = [](Canvas& c, int, int) {
+            c.DrawGlyph('p', kCrabX + 23, kCrabY - 3, kBang, 230);
+            c.DrawGlyph('p', kCrabX + 26, kCrabY - 1, kBang, 170);
+            c.DrawGlyph('p', kCrabX + 29, kCrabY - 3, kBang, 110);
+        };
+    }
+    {
+        Scene& sc = add("grey_wizard");
+        sc.pose.hat = Hat::Wizard;
+        sc.pose.beard = true;
+        sc.pose.tool = Tool::Staff;
+        sc.pose.right = Claw::High;
+        sc.pose.glow = 180;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = -1;
+        sc.front = [](Canvas& c, int, int) {
+            for (int i = 0; i < 10; ++i) {
+                const double a = 2.0 * kPi * i / 10.0;
+                const int x = kCrabX + 15 + static_cast<int>(std::lround(std::cos(a) * 8.0));
+                const int y = 17 + static_cast<int>(std::lround(std::sin(a) * 6.0));
+                c.DrawGlyph('s', x - 1, y - 1, i % 2 ? kConfetti[1] : kConfetti[0], 255);
+            }
+        };
+    }
+    {
         Scene& sc = add("cook");
         sc.pose.hat = Hat::Toque;
         sc.pose.tool = Tool::Pan;
@@ -217,20 +270,33 @@ std::vector<Scene> Scenes()
     {
         Scene& sc = add("fishing");
         sc.pose.tool = Tool::Rod;
-        sc.pose.right = Claw::Up;
+        sc.pose.right = Claw::High;
+        sc.pose.eyes = Eyes::Surprised;
         sc.pose.lookX = 1;
-        sc.pose.lookY = 1;
+        sc.pose.lookY = -1;
         sc.front = [](Canvas& c, int ox, int oy) {
-            const int bob = kFeetRow + 7;
-            c.DrawLine(ox + 20, oy - 2, ox + 22, bob, 0xDDDDDD, 200);
-            c.Put(ox + 22, bob, kBobber);
-            c.Put(ox + 22, bob + 1, kWhite);
+            c.DrawLine(ox + 20, oy - 4, ox + 24, oy - 12, 0xDDDDDD, 200);
+            c.DrawGlyph('f', kCrabX + 20, kCrabY - 14, kFishColor, 255);
+            c.DrawGlyph('!', kCrabX + 6, kCrabY - 10, kBang, 255);
+        };
+    }
+    {
+        Scene& sc = add("old_boot");
+        sc.pose.tool = Tool::Rod;
+        sc.pose.right = Claw::High;
+        sc.pose.eyes = Eyes::Closed;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = -1;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            c.DrawLine(ox + 20, oy - 4, ox + 24, oy - 12, 0xDDDDDD, 200);
+            c.DrawGlyph('b', kCrabX + 21, kCrabY - 14, kBootColor, 255);
+            c.DrawGlyph('?', kCrabX + 6, kCrabY - 10, kWhite, 255);
         };
     }
     {
         Scene& sc = add("reading");
         sc.pose.glasses = true;
-        sc.pose.book = 2;
+        sc.pose.book = 0;
         sc.pose.lookY = 1;
     }
     {
@@ -262,8 +328,8 @@ std::vector<Scene> Scenes()
         sc.pose.lookY = 1;
         sc.back = [](Canvas& c, int, int) { c.DrawPlant(kCrabX + 20, kFeetRow - 1, 4); };
         sc.front = [](Canvas& c, int, int) {
-            c.DrawGlyph('c', kCrabX + 21, kCrabY + 1, kRain, 255);
-            c.DrawGlyph('c', kCrabX + 22, kCrabY + 5, kRain, 200);
+            c.DrawGlyph('c', kCrabX + 22, kCrabY + 0, kRain, 255);
+            c.DrawGlyph('c', kCrabX + 21, kCrabY + 3, kRain, 200);
         };
     }
     {

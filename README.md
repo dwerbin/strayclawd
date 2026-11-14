@@ -30,8 +30,8 @@ Starting the exe a second time makes the running crab appear now.
 Tray icon (right click):
 
 - Show now / Hide
-- Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Cook, Dizzy,
-  Fishing, Reading, Juggling, Watering the plant, Fitness, Skateboard, Rain and rainbow,
+- Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Magic: young
+  wizard, Magic: grey wizard, Cook, Dizzy, Fishing, Reading, Juggling, Watering the plant, Fitness, Skateboard, Rain and rainbow,
   Coffee, Yawn)
 - Type along with me / Today is a party day
 - Frequency: Rare (5-15 min), Normal (1-5 min), Often (20-60 s)
@@ -55,9 +55,13 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   - Painter: beret and brush; he looks toward the wallpaper and paints a small copy of your
     real wallpaper on an easel.
   - Magician: top hat and wand; shooting stars, then a bow.
+  - Young wizard: round glasses, a scar and a red and gold scarf; he casts red and gold
+    spells with his wand, then takes a short ride on a broom.
+  - Grey wizard: pointed grey hat, long white beard and a staff; the staff lights up, he
+    strikes the ground, then sends fireworks into the sky.
   - Cook: chef toque and a frying pan; vegetables jump in the pan, steam rises.
   - Fishing from the window edge: the line goes down into the window; a fish or an old boot.
-  - Reading with glasses, turning pages.
+  - Reading with glasses, the book held up in front of him, turning pages.
   - Juggling three balls; sometimes one falls on his head.
   - Watering a small plant. It grows one step per watering (up to a flower) and starts
     again from a seed each day.
@@ -115,8 +119,14 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   </tr>
   <tr>
     <td align="center"><img src="art/poses/magician.png" alt="Magician" width="168"><br>Magician</td>
+    <td align="center"><img src="art/poses/young_wizard.png" alt="Young wizard" width="168"><br>Young wizard</td>
+    <td align="center"><img src="art/poses/broom.png" alt="Young wizard on a broom" width="168"><br>Young wizard on a broom</td>
+    <td align="center"><img src="art/poses/grey_wizard.png" alt="Grey wizard" width="168"><br>Grey wizard</td>
+  </tr>
+  <tr>
     <td align="center"><img src="art/poses/cook.png" alt="Cook" width="168"><br>Cook</td>
-    <td align="center"><img src="art/poses/fishing.png" alt="Fishing" width="168"><br>Fishing</td>
+    <td align="center"><img src="art/poses/fishing.png" alt="Fishing: a fish" width="168"><br>Fishing: a fish</td>
+    <td align="center"><img src="art/poses/old_boot.png" alt="Fishing: an old boot" width="168"><br>Fishing: an old boot</td>
     <td align="center"><img src="art/poses/reading.png" alt="Reading" width="168"><br>Reading</td>
   </tr>
   <tr>

@@ -40,6 +40,8 @@ constexpr uint32_t kSteam = 0xF0F0F0;
 constexpr uint32_t kCarrot = 0xF08A24;
 constexpr uint32_t kPea = 0x5DBB4A;
 constexpr uint32_t kTomato = 0xE23B3B;
+constexpr uint32_t kSpellRed = 0xFF5A5A;
+constexpr uint32_t kFireworks[4] = {0xE8505B, 0x4FC3E8, 0xF2C14E, 0x5DBB4A};
 constexpr double kPi = 3.14159265358979323846;
 
 constexpr char kCodeGlyphs[] = "{};<>/=01";
@@ -345,6 +347,8 @@ void Mate::OnCommand(UINT id)
     case kCmdPlayBuild: PlayAct(Act::Build); break;
     case kCmdPlayPaint: PlayAct(Act::Paint); break;
     case kCmdPlayMagic: PlayAct(Act::Magic); break;
+    case kCmdPlayWizard: PlayAct(Act::Wizard); break;
+    case kCmdPlayGreyWizard: PlayAct(Act::GreyWizard); break;
     case kCmdPlayCook: PlayAct(Act::Cook); break;
     case kCmdPlayDizzy: PlayAct(Act::Dizzy); break;
     case kCmdPlayFish: PlayAct(Act::Fish); break;
@@ -849,6 +853,7 @@ void Mate::NextActivity()
         {Act::Typing, 5}, {Act::Walk, 3}, {Act::Wave, 1}, {Act::Look, 2}, {Act::Dance, 2},
         {Act::Sleep, night ? 4 : 1}, {Act::Think, 2}, {Act::Sneeze, 1}, {Act::Sit, 2},
         {Act::Build, 1},  {Act::Paint, 1}, {Act::Magic, 1}, {Act::Cook, 1},
+        {Act::Wizard, 1}, {Act::GreyWizard, 1},
         {Act::Fish, 1},   {Act::Read, 1},  {Act::Juggle, 1}, {Act::Water, 1},
         {Act::Fitness, 1}, {Act::Skate, 1}, {Act::Umbrella, 1},
         {Act::Coffee, morning ? 3 : 0}, {Act::Yawn, evening ? 2 : 0},
@@ -898,6 +903,8 @@ void Mate::BeginAct(Act a)
         break;
     }
     case Act::Magic: actDur_ = 6.2; break;
+    case Act::Wizard: actDur_ = 7.0; break;
+    case Act::GreyWizard: actDur_ = 7.2; break;
     case Act::Cook: actDur_ = 7.6; break;
     case Act::Stare: {
         actDur_ = Rnd(2.5, 4.0);
@@ -1704,6 +1711,8 @@ void Mate::StepActivity(double dt)
     case Act::Build: StepBuild(dt); break;
     case Act::Paint: StepPaint(dt); break;
     case Act::Magic: StepMagic(dt); break;
+    case Act::Wizard: StepWizard(dt); break;
+    case Act::GreyWizard: StepGreyWizard(dt); break;
     case Act::Cook: StepCook(dt); break;
 
     case Act::Stare: {
@@ -1991,6 +2000,131 @@ void Mate::StepMagic(double dt)
     }
 }
 
+void Mate::StepWizard(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    pose_.roundGlasses = true;
+    pose_.scar = true;
+    pose_.scarf = true;
+    if (t < 3.8) {
+        pose_.tool = Tool::Wand;
+        pose_.woodWand = true;
+        pose_.toolSide = 1;
+        pose_.lookX = 1;
+        if (t < 0.4) {
+            return;
+        }
+        const double c = std::fmod(t - 0.4, 1.1);
+        const int k = static_cast<int>((t - 0.4) / 1.1);
+        const bool flick = c < 0.25;
+        pose_.right = flick ? Claw::High : Claw::Mid;
+        if (!flick && counter_ != k + 1) {
+            counter_ = k + 1;
+            const uint32_t col = k % 2 == 0 ? kSpellRed : kBang;
+            const double tipX = kCrabX + 17;
+            const double tipY = kCrabY - 1;
+            Spawn('s', tipX, tipY - 1, 42.0, Rnd(-4.0, 4.0), 0.8, col);
+            for (int j = 1; j <= 3; ++j) {
+                Spawn('p', tipX - j, tipY, 42.0, 0.0, 0.8, col, 0.0, 0.9 - 0.25 * j);
+            }
+        }
+        pose_.eyes = flick ? Eyes::Open : Eyes::Happy;
+        return;
+    }
+    if (t < 6.2) {
+        const double ride = (t - 3.8) / 2.4;
+        pose_.broom = true;
+        pose_.eyes = Eyes::Happy;
+        pose_.legs = Legs::Spread;
+        pose_.left = Claw::Mid;
+        pose_.right = Claw::Mid;
+        lift_ = static_cast<int>(std::lround(12.0 * std::sin(kPi * ride)));
+        if (phase_ == 0) {
+            phase_ = 1;
+            Puff(kCrabX + 8, kCrabY + 8, 5, kWhite);
+        }
+        if (Rnd() < 0.25) {
+            Spawn('p', kCrabX + 21, kCrabY + 8 - lift_, -6.0, Rnd(-2.0, 2.0), 0.6, kBang, 0.0, 0.8);
+        }
+        return;
+    }
+    pose_.eyes = Eyes::Happy;
+    if (t > 6.4 && t < 6.8) {
+        pose_.body = Body::Crouch;
+    }
+}
+
+void Mate::StepGreyWizard(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    pose_.hat = Hat::Wizard;
+    pose_.beard = true;
+    pose_.tool = Tool::Staff;
+    pose_.toolSide = 1;
+    if (t < 0.6) {
+        pose_.hatDrop = static_cast<int>(std::lround((1.0 - t / 0.6) * 12.0));
+        return;
+    }
+    const double tipX = kCrabX + 16;
+    if (t < 2.4) {
+        pose_.right = Claw::High;
+        pose_.lookX = 1;
+        pose_.lookY = -1;
+        pose_.glow = static_cast<int>(255.0 * (t - 0.6) / 1.8);
+        if (Rnd() < 0.15) {
+            Spawn('p', tipX + RndI(-3, 3), kCrabY - 8 + RndI(-3, 3), 0.0, -4.0, 0.5, kWhite, 0.0, 0.9);
+        }
+        return;
+    }
+    if (t < 2.8) {
+        pose_.right = Claw::Mid;
+        pose_.glow = 255;
+        if (phase_ == 0) {
+            phase_ = 1;
+            for (int i = 0; i < 10; ++i) {
+                const double a = 2.0 * kPi * i / 10.0;
+                Spawn('s', tipX - 1, kCrabY - 5, std::cos(a) * 22.0, std::sin(a) * 15.0, 0.7, kWhite);
+            }
+            Spawn('*', kCrabX - 3, kFeetRow - 5, -10.0, -6.0, 0.5, kWhite);
+            Spawn('*', kCrabX + 17, kFeetRow - 5, 10.0, -6.0, 0.5, kWhite);
+        }
+        shake_ = (static_cast<int>(t / 0.05) % 2) ? 1 : -1;
+        return;
+    }
+    if (t < 6.0) {
+        pose_.right = Claw::High;
+        pose_.glow = 180;
+        pose_.lookX = 1;
+        pose_.lookY = -1;
+        const int launch = static_cast<int>((t - 2.9) / 1.0);
+        if (t >= 2.9 && launch < 3 && counter_ != launch + 1) {
+            counter_ = launch + 1;
+            Spawn('c', tipX, kCrabY - 10, 0.0, -32.0, 0.55, kBang);
+        }
+        const int burst = static_cast<int>((t - 3.45) / 1.0);
+        if (t >= 3.45 && burst < 3 && actFlag_ != burst + 1) {
+            actFlag_ = burst + 1;
+            const uint32_t col = kFireworks[burst % 4];
+            const uint32_t col2 = kFireworks[(burst + 2) % 4];
+            for (int i = 0; i < 10; ++i) {
+                const double a = 2.0 * kPi * i / 10.0;
+                Spawn('s', tipX - 1, kCrabY - 28, std::cos(a) * 16.0, std::sin(a) * 12.0, 0.9, i % 2 ? col : col2, 15.0);
+            }
+        }
+        if (t >= 3.45) {
+            pose_.eyes = Eyes::Happy;
+        }
+        return;
+    }
+    pose_.eyes = Eyes::Happy;
+    pose_.right = Claw::Mid;
+    if (t > 6.2 && t < 6.6) {
+        pose_.body = Body::Crouch;
+    }
+}
+
 void Mate::StepCook(double dt)
 {
     const double t = actT_;
@@ -2092,7 +2226,7 @@ void Mate::StepFish(double dt)
         bobberY_ = static_cast<int>(std::lround(Lerp(water, kCrabY, (t - bite - 0.5) / 0.3)));
         if (phase_ == 1) {
             phase_ = 2;
-            Spawn(catchKind_ == 0 ? 'f' : 'b', kCrabX + 20, kFeetRow, -14.0, -34.0, 1.3,
+            Spawn(catchKind_ == 0 ? 'f' : 'b', kCrabX + (catchKind_ == 0 ? 16 : 18), kFeetRow, -14.0, -34.0, 1.3,
                   catchKind_ == 0 ? kFishColor : kBootColor, 50.0);
         }
         return;
@@ -2197,8 +2331,8 @@ void Mate::StepWater(double dt)
     if (t >= 1.0 && t < 4.0) {
         timerA_ -= dt;
         if (timerA_ <= 0.0) {
-            timerA_ = 0.12;
-            Spawn('c', plantX + RndI(-1, 0), kCrabY + 1, Rnd(-2.0, 2.0), 10.0, 0.45, kRain, 60.0);
+            timerA_ = 0.08;
+            Spawn('c', plantX + RndI(-1, 0), kCrabY + 1, Rnd(-1.0, 1.0), 10.0, 0.25, kRain, 60.0);
         }
     }
     if (t >= 4.0) {
@@ -2300,7 +2434,7 @@ void Mate::StepUmbrella(double dt)
         while (timerA_ <= 0.0) {
             timerA_ += 0.04;
             const int x = RndI(2, kCanvasW - 3);
-            if (t > 0.9 && x >= kCrabX - 1 && x <= kCrabX + 16) {
+            if (t > 0.9 && x >= kCrabX + 2 && x <= kCrabX + 26) {
                 continue;
             }
             Spawn('c', x, RndI(0, 6), 0.0, 45.0, 1.0, kRain, 0.0, 0.8);

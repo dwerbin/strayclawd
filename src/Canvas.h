@@ -8,8 +8,8 @@ enum class Eyes { Open, Closed, Happy, Surprised, Dizzy };
 enum class Claw { High, Up, Mid, Down };
 enum class Legs { Stand, LiftLeft, LiftRight, Spread };
 enum class Body { Normal, Crouch, Squash };
-enum class Hat { None, HardHat, Beret, TopHat, Toque, Nightcap, Santa, Witch, Party };
-enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella };
+enum class Hat { None, HardHat, Beret, TopHat, Toque, Nightcap, Santa, Witch, Party, Wizard };
+enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff };
 
 constexpr int kNoBarbell = -99;
 
@@ -36,6 +36,13 @@ struct Pose {
     int book = -1;
     int barbell = kNoBarbell;
     bool skate = false;
+    bool roundGlasses = false;
+    bool scar = false;
+    bool scarf = false;
+    bool beard = false;
+    bool broom = false;
+    bool woodWand = false;
+    int glow = 0;
 };
 
 constexpr int kCrabW = 16;

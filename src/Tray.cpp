@@ -37,6 +37,8 @@ void Tray::ShowMenu(HWND owner, const Settings& settings, bool crabVisible) cons
     AppendMenuW(play, MF_STRING, kCmdPlayBuild, L"DIY on a ladder");
     AppendMenuW(play, MF_STRING, kCmdPlayPaint, L"Paint");
     AppendMenuW(play, MF_STRING, kCmdPlayMagic, L"Magic");
+    AppendMenuW(play, MF_STRING, kCmdPlayWizard, L"Magic: young wizard");
+    AppendMenuW(play, MF_STRING, kCmdPlayGreyWizard, L"Magic: grey wizard");
     AppendMenuW(play, MF_STRING, kCmdPlayCook, L"Cook");
     AppendMenuW(play, MF_STRING, kCmdPlayDizzy, L"Dizzy");
     AppendMenuW(play, MF_STRING, kCmdPlayFish, L"Fishing");

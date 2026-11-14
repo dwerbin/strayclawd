@@ -24,7 +24,8 @@ private:
     enum class State { Hidden, SidePeek, Peek, Emerge, Active, Retreat, Falling, Dragged, Land, Parachute };
     enum class Act { Sit, Typing, Walk, Wave, Look, Dance, Sleep, Think, Sneeze, React,
                      Build, Paint, Magic, Cook, Stare, Dizzy,
-                     Fish, Read, Juggle, Water, Fitness, Skate, Umbrella, Coffee, Yawn, Chase };
+                     Fish, Read, Juggle, Water, Fitness, Skate, Umbrella, Coffee, Yawn, Chase,
+                     Wizard, GreyWizard };
     enum class Surface { None, Window, Ground };
     enum class ZMode { Free, Above, Behind };
 
@@ -77,6 +78,8 @@ private:
     void StepBuild(double dt);
     void StepPaint(double dt);
     void StepMagic(double dt);
+    void StepWizard(double dt);
+    void StepGreyWizard(double dt);
     void StepCook(double dt);
     void StepFish(double dt);
     void StepRead(double dt);
