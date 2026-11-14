@@ -43,6 +43,7 @@ constexpr uint32_t kTomato = 0xE23B3B;
 constexpr uint32_t kSpellRed = 0xFF5A5A;
 constexpr uint32_t kFireworks[4] = {0xE8505B, 0x4FC3E8, 0xF2C14E, 0x5DBB4A};
 constexpr uint32_t kSmoke = 0xBDBDBD;
+constexpr uint32_t kBoard = 0xB07A3B;
 constexpr double kPi = 3.14159265358979323846;
 
 constexpr char kCodeGlyphs[] = "{};<>/=01";
@@ -895,6 +896,7 @@ void Mate::BeginAct(Act a)
     liftPos_ = 0.0;
     liftV_ = 0.0;
     flyY_ = 0.0;
+    overX_ = 0.0;
     const double s = scale_;
     switch (a) {
     case Act::Build: actDur_ = 8.4; break;
@@ -973,14 +975,12 @@ void Mate::BeginAct(Act a)
         break;
     }
     case Act::Fitness: actDur_ = 8.0; break;
-    case Act::Skate: {
-        actDur_ = 6.0;
-        const double w = surfRect_.right - surfRect_.left;
-        const double m = 12.0 * s;
-        dir_ = (w - relX_) >= relX_ ? 1 : -1;
-        targetRel_ = std::clamp(relX_ + dir_ * Rnd(60.0 * s, 120.0 * s), m, std::max(m, w - m));
+    case Act::Skate:
+        actDur_ = 8.0;
+        dir_ = Rnd() < 0.5 ? -1 : 1;
+        skatePos_ = relX_;
+        targetRel_ = relX_ + dir_ * Rnd(150.0 * s, 320.0 * s);
         break;
-    }
     case Act::Umbrella: actDur_ = 9.0; break;
     case Act::Coffee: actDur_ = 6.0; break;
     case Act::Yawn: actDur_ = 3.5; break;
@@ -1034,6 +1034,8 @@ void Mate::StartFall(double vx, double vy)
     bubble_ = -1;
     vx_ = vx;
     vy_ = vy;
+    overX_ = 0.0;
+    panicFall_ = false;
     SetZ(ZMode::Free);
     Enter(State::Falling);
 }
@@ -1135,6 +1137,7 @@ void Mate::Tick(double dt)
     lift_ = 0;
     ladderH_ = 0;
     rocketLevel_ = 0;
+    rocketShift_ = 0;
     rocketRide_ = false;
     rocketFlame_ = 0;
     easel_ = false;
@@ -1307,7 +1310,7 @@ void Mate::StepState(double dt)
         CheckStare(dt);
         StepActivity(dt);
         if (state_ == State::Active) {
-            footX_ = surfRect_.left + relX_;
+            footX_ = surfRect_.left + relX_ + overX_;
             footY_ = edge_ - flyY_;
         }
         return;
@@ -1357,6 +1360,18 @@ void Mate::StepState(double dt)
         pose_.left = Claw::High;
         pose_.right = Claw::High;
         pose_.eyes = Eyes::Surprised;
+        if (panicFall_) {
+            const bool ph = static_cast<int>(t / 0.08) % 2 == 0;
+            pose_.left = ph ? Claw::High : Claw::Up;
+            pose_.right = ph ? Claw::Up : Claw::High;
+            pose_.legs = ph ? Legs::LiftLeft : Legs::LiftRight;
+            shake_ = ph ? 1 : -1;
+            timerA_ -= dt;
+            if (timerA_ <= 0.0) {
+                timerA_ = 0.2;
+                Spawn('d', ph ? kCrabX + 15 : kCrabX - 2, kCrabY - 3, ph ? 8.0 : -8.0, -10.0, 0.5, kDrop);
+            }
+        }
         SetZ(ZMode::Free);
         fallScan_ -= dt;
         if (fallScan_ <= 0.0) {
@@ -2175,18 +2190,24 @@ void Mate::StepRocket(double dt)
         pose_.eyes = Eyes::Happy;
         if (phase_ == 1) {
             phase_ = 2;
-            hopV_ = 35.0;
+            hopV_ = 45.0;
+            targetRel_ = relX_;
         }
+        rocketShift_ = static_cast<int>(std::lround(18.0 * Smooth((t - 4.5) / 0.5)));
+        relX_ = targetRel_ + side * rocketShift_ * s;
         return;
     }
     rocketRide_ = true;
     pose_.lookX = 0;
     pose_.left = Claw::High;
     pose_.right = Claw::High;
-    if (phase_ == 2) {
+    if (phase_ < 3) {
+        if (phase_ < 2) {
+            targetRel_ = relX_;
+        }
         phase_ = 3;
-        Puff(kCrabX + 8, kCrabY + 4, 8, kWhite);
-        Puff(rocketX, kFeetRow - 8, 6, kWhite);
+        relX_ = targetRel_ + side * 18.0 * s;
+        Puff(kCrabX + 8, kFeetRow - 1, 4, kWhite);
     }
     if (t < 6.5) {
         const int n = 3 - static_cast<int>((t - 5.0) / 0.5);
@@ -2494,16 +2515,58 @@ void Mate::StepSkate(double dt)
     pose_.skate = true;
     lift_ = 2;
     if (phase_ == 0) {
-        relX_ += 45.0 * s * dt * dir_;
+        const double w = surfRect_.right - surfRect_.left;
+        const double m = 10.0 * s;
+        skatePos_ += 70.0 * s * dt * dir_;
+        if (surface_ != Surface::Window) {
+            skatePos_ = std::clamp(skatePos_, m, std::max(m, w - m));
+        }
+        relX_ = std::clamp(skatePos_, m, std::max(m, w - m));
+        overX_ = skatePos_ - relX_;
         pose_.lookX = dir_;
         pose_.left = Claw::Up;
         pose_.right = Claw::Up;
         pose_.eyes = Eyes::Happy;
-        const bool reached = (dir_ > 0 && relX_ >= targetRel_) || (dir_ < 0 && relX_ <= targetRel_);
-        if (reached || t > 4.0) {
+        if (std::abs(overX_) > 40.0 * s) {
+            phase_ = 3;
+            timerA_ = t;
+            actDur_ = 1000.0;
+            Spawn('k', kCrabX + 2, kFeetRow, dir_ * 45.0, 0.0, 1.5, kBoard, 150.0);
+            return;
+        }
+        const bool reached = (dir_ > 0 && skatePos_ >= targetRel_) || (dir_ < 0 && skatePos_ <= targetRel_)
+                             || (overX_ == 0.0 && (relX_ <= m || relX_ >= w - m));
+        if (overX_ == 0.0 && (reached || t > 6.0)) {
             phase_ = 1;
             hopV_ = 50.0;
             timerA_ = t;
+        }
+    } else if (phase_ == 3) {
+        pose_.skate = false;
+        const double ct = t - timerA_;
+        if (ct < 0.5) {
+            pose_.lookX = dir_;
+        } else if (ct < 1.1) {
+            pose_.lookY = 1;
+        } else if (ct < 1.7) {
+            pose_.eyes = Eyes::Surprised;
+            if (counter_ != 1) {
+                counter_ = 1;
+                Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -8.0, 0.8, kBang);
+            }
+            shake_ = (static_cast<int>(ct / 0.05) % 2) ? 1 : -1;
+        } else if (ct < 2.1) {
+            pose_.eyes = Eyes::Closed;
+            pose_.left = Claw::Up;
+            pose_.right = Claw::Up;
+            if (counter_ != 2) {
+                counter_ = 2;
+                Spawn('d', kCrabX + 14, kCrabY - 2, 3.0, 6.0, 0.6, kDrop);
+            }
+        } else {
+            StartFall(0.0, 0.0);
+            panicFall_ = true;
+            timerA_ = 0.0;
         }
     } else {
         pose_.left = Claw::High;
@@ -2674,7 +2737,7 @@ void Mate::Render()
     if (rocketRide_) {
         canvas_.DrawRocket(ox + 1, oy - 10, 4, rocketFlame_);
     } else if (rocketLevel_ > 0) {
-        canvas_.DrawRocket(propSide_ > 0 ? kCrabX + 19 : kCrabX - 17, kFeetRow - 20, rocketLevel_, 0);
+        canvas_.DrawRocket((propSide_ > 0 ? kCrabX + 19 : kCrabX - 17) - propSide_ * rocketShift_, kFeetRow - 20, rocketLevel_, 0);
     }
     if (easel_) {
         canvas_.DrawEasel(easelSide_ > 0 ? kCrabX + 18 : kCrabX - 11, kCrabY - 1, painting_, revealed_);

@@ -59,6 +59,7 @@ struct Scene {
     std::function<void(Canvas&, int, int)> back;
     std::function<void(Canvas&, int, int)> front;
     bool peek = false;
+    int edgeX = kW;
 };
 
 void Stars(Canvas& c, int ox, int oy, bool hat)
@@ -350,6 +351,16 @@ std::vector<Scene> Scenes()
         sc.dy = -8;
     }
     {
+        Scene& sc = add("off_the_edge");
+        sc.pose.eyes = Eyes::Surprised;
+        sc.dy = -2;
+        sc.edgeX = kCrabX - 4;
+        sc.front = [](Canvas& c, int, int) {
+            c.DrawGlyph('!', kCrabX + 6, kCrabY - 11, kBang, 255);
+            c.DrawGlyph('k', kCrabX + 14, kFeetRow + 5, 0xB07A3B, 255);
+        };
+    }
+    {
         Scene& sc = add("umbrella");
         sc.pose.tool = Tool::Umbrella;
         sc.pose.right = Claw::Up;
@@ -381,7 +392,7 @@ std::vector<Scene> Scenes()
         sc.pose.right = Claw::High;
         sc.pose.legs = Legs::LiftLeft;
         sc.pose.lookX = -1;
-        sc.dy = -16;
+        sc.dy = -9;
         sc.front = [](Canvas& c, int ox, int oy) { c.DrawParachute(ox + 8, oy - 14, 0); };
     }
     {
@@ -447,22 +458,22 @@ std::vector<Scene> Scenes()
     return s;
 }
 
-void FillRows(std::vector<uint32_t>& img, int y0, int y1, uint32_t rgb)
+void FillRows(std::vector<uint32_t>& img, int y0, int y1, uint32_t rgb, int x1 = kW)
 {
     const int w = kW * kScale;
     for (int y = y0 * kScale; y < y1 * kScale; ++y) {
-        for (int x = 0; x < w; ++x) {
+        for (int x = 0; x < x1 * kScale; ++x) {
             img[static_cast<size_t>(y) * w + x] = 0xFF000000 | rgb;
         }
     }
 }
 
-void Background(std::vector<uint32_t>& img)
+void Background(std::vector<uint32_t>& img, int edgeX)
 {
-    FillRows(img, 0, kFeetRow, kDesk);
-    FillRows(img, kFeetRow, kFeetRow + 1, kTitleEdge);
-    FillRows(img, kFeetRow + 1, kFeetRow + 5, kTitleBar);
-    FillRows(img, kFeetRow + 5, kH, kWindow);
+    FillRows(img, 0, kH, kDesk);
+    FillRows(img, kFeetRow, kFeetRow + 1, kTitleEdge, edgeX);
+    FillRows(img, kFeetRow + 1, kFeetRow + 5, kTitleBar, edgeX);
+    FillRows(img, kFeetRow + 5, kH, kWindow, edgeX);
 }
 
 void Over(std::vector<uint32_t>& img, const uint32_t* src, int fromRow, int toRow)
@@ -532,7 +543,7 @@ int wmain(int argc, wchar_t** argv)
             sc.front(c, ox, oy);
         }
         std::vector<uint32_t> img(static_cast<size_t>(w) * h);
-        Background(img);
+        Background(img, sc.edgeX);
         Over(img, c.Data(), 0, sc.peek ? kFeetRow : kH);
 
         Gdiplus::Bitmap bmp(w, (kBottom - kTop) * kScale, w * 4, PixelFormat32bppARGB,

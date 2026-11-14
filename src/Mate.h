@@ -186,9 +186,13 @@ private:
     double liftV_ = 0.0;
     int ladderH_ = 0;
     int rocketLevel_ = 0;
+    int rocketShift_ = 0;
     bool rocketRide_ = false;
     int rocketFlame_ = 0;
     double flyY_ = 0.0;
+    double overX_ = 0.0;
+    double skatePos_ = 0.0;
+    bool panicFall_ = false;
     bool easel_ = false;
     int easelSide_ = 1;
     int chuteFold_ = -1;

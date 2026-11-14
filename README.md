@@ -4,7 +4,7 @@
   <img src="art/claude-wink-transparent.png" alt="The StrayClawd crab winks, with a heart" width="200">
 </p>
 
-A desktop pet for Windows, in the spirit of the old Screen Mate Poo: the small orange pixel
+A desktop pet for Windows, in the spirit of the old [Screen Mate Poo](https://github.com/lwu309/Scmpoo): the small orange pixel
 crab of Claude appears at random from behind one of your windows, sits on its title bar,
 types on a tiny keyboard and does small cute things, then hides again.
 
@@ -66,7 +66,9 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   - Watering a small plant. It grows one step per watering (up to a flower) and starts
     again from a seed each day.
   - Fitness: push-ups, then a barbell, with sweat drops.
-  - Skateboard along the edge, with a jump at the end.
+  - Skateboard along the edge, over a long distance, with a jump at the end. If he reaches
+    the end of the window, he rolls on in the air, stops, looks down, sees there is nothing
+    under his feet and falls in a panic, cartoon style.
   - Rain: he opens an umbrella, then a rainbow appears.
   - Rocket: he builds a small rocket next to him with a hammer, jumps on it, counts down
     3, 2, 1, and takes off; he leaves the screen by the top and comes back later.
@@ -138,18 +140,19 @@ Settings are stored in `HKCU\Software\StrayClawd`.
     <td align="center"><img src="art/poses/skateboard.png" alt="Skateboard" width="168"><br>Skateboard</td>
   </tr>
   <tr>
+    <td align="center"><img src="art/poses/off_the_edge.png" alt="Skateboard: off the edge" width="168"><br>Skateboard: off the edge</td>
     <td align="center"><img src="art/poses/umbrella.png" alt="Rain" width="168"><br>Rain</td>
     <td align="center"><img src="art/poses/rainbow.png" alt="Rainbow" width="168"><br>Rainbow</td>
     <td align="center"><img src="art/poses/coffee.png" alt="Coffee" width="168"><br>Coffee</td>
-    <td align="center"><img src="art/poses/parachute.png" alt="Parachute" width="168"><br>Parachute</td>
   </tr>
   <tr>
+    <td align="center"><img src="art/poses/parachute.png" alt="Parachute" width="168"><br>Parachute</td>
     <td align="center"><img src="art/poses/rocket_build.png" alt="Rocket: building" width="168"><br>Rocket: building</td>
     <td align="center"><img src="art/poses/rocket_launch.png" alt="Rocket: takeoff" width="168"><br>Rocket: takeoff</td>
     <td align="center"><img src="art/poses/dizzy.png" alt="Dizzy" width="168"><br>Dizzy</td>
-    <td align="center"><img src="art/poses/santa.png" alt="December" width="168"><br>December</td>
   </tr>
   <tr>
+    <td align="center"><img src="art/poses/santa.png" alt="December" width="168"><br>December</td>
     <td align="center"><img src="art/poses/witch.png" alt="Halloween" width="168"><br>Halloween</td>
     <td align="center"><img src="art/poses/party.png" alt="Party day" width="168"><br>Party day</td>
   </tr>

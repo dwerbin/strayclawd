@@ -46,6 +46,7 @@ const Glyph kGlyphs[] = {
     {'~', {".X", "X.", ".X", "", ""}},
     {'f', {"..XXXX...X", ".XXXXXX.XX", "XX.XXXXXX.", ".XXXXXX.XX", "..XXXX...X"}},
     {'b', {"..XXXX", "..X.XX", "..XXXX", "XXXXXX", "XXXXXX"}},
+    {'k', {"X..........X", "XXXXXXXXXXXX", "..X......X..", "", ""}},
 };
 
 constexpr uint32_t kNightcap = 0x3B5BA9;
@@ -735,36 +736,36 @@ void Canvas::DrawParachute(int cx, int top, int fold)
 {
     auto stripe = [&](int dx) { return ((dx + 30) / 3) % 2 ? kChuteRed : kHatYellow; };
     if (fold == 0) {
-        const int widths[5] = {5, 7, 8, 9, 9};
-        for (int j = 0; j < 5; ++j) {
+        const int widths[8] = {6, 9, 11, 12, 13, 14, 14, 14};
+        for (int j = 0; j < 8; ++j) {
             for (int dx = -widths[j]; dx <= widths[j]; ++dx) {
-                if (j == 4 && (dx + 9) % 6 == 3) {
+                if (j == 7 && (dx + 14) % 7 == 3) {
                     continue;
                 }
-                Put(cx + dx, top + j, stripe(dx));
+                Put(cx + dx, top - 5 + j, stripe(dx));
             }
         }
-        const int from[4] = {-9, -3, 3, 9};
+        const int from[4] = {-14, -5, 5, 14};
         const int to[4] = {-8, -4, 3, 7};
         for (int k = 0; k < 4; ++k) {
-            for (int y = top + 5; y <= top + 13; ++y) {
-                const double t = (y - (top + 5)) / 8.0;
+            for (int y = top + 3; y <= top + 13; ++y) {
+                const double t = (y - (top + 3)) / 10.0;
                 const int x = cx + static_cast<int>(std::lround(from[k] + (to[k] - from[k]) * t));
                 Put(x, y, kString, 220);
             }
         }
     } else if (fold == 1) {
-        const int widths[3] = {4, 6, 7};
-        for (int j = 0; j < 3; ++j) {
+        const int widths[4] = {6, 9, 11, 12};
+        for (int j = 0; j < 4; ++j) {
             for (int dx = -widths[j]; dx <= widths[j]; ++dx) {
-                Put(cx + dx, top + 7 + j, stripe(dx));
+                Put(cx + dx, top + 6 + j, stripe(dx));
             }
         }
     } else {
-        for (int dx = -10; dx <= 10; ++dx) {
+        for (int dx = -14; dx <= 14; ++dx) {
             Put(cx + dx, top + 22, stripe(dx));
         }
-        for (int dx = -11; dx <= 11; ++dx) {
+        for (int dx = -15; dx <= 15; ++dx) {
             Put(cx + dx, top + 23, stripe(dx));
         }
     }
