@@ -1,14 +1,33 @@
-# StrayClawd
+# StrayClawd: a desktop pet for Windows
 
 <p align="center">
-  <img src="art/claude-wink-transparent.png" alt="The StrayClawd crab winks, with a heart" width="200">
+  <img src="art/claude-wink-transparent.png" alt="StrayClawd, a pixel crab desktop pet for Windows, winks with a heart" width="200">
 </p>
 
-A desktop pet for Windows, in the spirit of the old [Screen Mate Poo](https://github.com/lwu309/Scmpoo): the small orange pixel
-crab of Claude appears at random from behind one of your windows, sits on its title bar,
-types on a tiny keyboard and does small cute things, then hides again.
+StrayClawd is a free desktop pet (a screen mate, or virtual pet) for Windows 10 and 11, in
+the spirit of the old [Screen Mate Poo](https://github.com/lwu309/Scmpoo), eSheep and
+Shimeji: the small orange pixel crab of Claude appears at random from behind one of your
+windows, sits on its title bar, types on a tiny keyboard and does small cute things, then
+hides again.
 
-Pure Win32 + GDI, C++20, no external library. One small exe, no install.
+## Download
+
+Get `clawdmate.exe` from the [latest release](https://github.com/dwerbin/strayclawd/releases/latest)
+and run it. One small file, no install, Windows 10/11 x64. The crab shows up after 3 s; right
+click its tray icon for the menu.
+
+## Features
+
+- Lives on your window title bars and on the taskbar; follows a window when you move it and
+  falls when it closes.
+- More than 30 animations: typing, dancing, sleeping, DIY, painter, wizards, cooking,
+  fishing, juggling, a plant that grows and explodes, skateboard, rocket, yoga, cleaning and
+  more (see the [gallery](#gallery)).
+- Reacts to the mouse: stares at the cursor, chases it, waves at it, gets dizzy.
+- Drag and throw it; it lands on the next window below.
+- Time of day and seasons: coffee in the morning, nightcap at night, Santa hat in December,
+  witch hat at Halloween.
+- Tiny and light: one exe, no install, no external library.
 
 ## Build
 
@@ -104,6 +123,8 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   taskbar.
 
 ## How it works
+
+Pure Win32 + GDI, C++20, no external library.
 
 - `src/Mate.cpp`: layered window (`UpdateLayeredWindow`, per-pixel alpha), the state machine
   and the activities. To "come from behind" a window, the crab window is put just below the
