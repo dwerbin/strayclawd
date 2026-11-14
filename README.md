@@ -32,7 +32,7 @@ Tray icon (right click):
 - Show now / Hide
 - Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Magic: young
   wizard, Magic: grey wizard, Cook, Dizzy, Fishing, Reading, Juggling, Watering the plant,
-  Fitness, Skateboard, Rain and rainbow, Coffee, Yawn, Rocket)
+  Fitness, Skateboard, Rain and rainbow, Coffee, Yawn, Rocket, Dusting, Sweeping)
 - Type along with me / Today is a party day
 - Frequency: Rare (5-15 min), Normal (1-5 min), Often (20-60 s)
 - Pause
@@ -63,8 +63,9 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   - Fishing from the window edge: the line goes down into the window; a fish or an old boot.
   - Reading with glasses, the book held up in front of him, turning pages.
   - Juggling three balls; sometimes one falls on his head.
-  - Watering a small plant. It grows one step per watering (up to a flower) and starts
-    again from a seed each day.
+  - Watering a small plant. It grows one step per watering: a flower at step 4, a big
+    flower at step 5. At step 6 the flower explodes; he is dizzy for a moment, and the
+    plant starts again from an empty pot.
   - Fitness: push-ups, then a barbell, with sweat drops.
   - Skateboard along the edge, over a long distance, with a jump at the end. If he reaches
     the end of the window, he rolls on in the air, stops, looks down, sees there is nothing
@@ -72,6 +73,9 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   - Rain: he opens an umbrella, then a rainbow appears.
   - Rocket: he builds a small rocket next to him with a hammer, jumps on it, counts down
     3, 2, 1, and takes off; he leaves the screen by the top and comes back later.
+  - Dusting: a feather duster, on one side then the other; the dust makes him sneeze.
+  - Sweeping: he walks along the edge with a broom and pushes a growing pile of dust, then
+    sweeps it over the edge and wipes his brow.
 - Time of day: coffee in the morning (6-11 h), yawns after lunch and in the evening, more
   sleep and a nightcap at night (21-6 h).
 - Seasons: Santa hat, white beard and snow in December, witch hat from 24 to 31 October, party hat and
@@ -136,23 +140,28 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   <tr>
     <td align="center"><img src="art/poses/juggling.png" alt="Juggling" width="168"><br>Juggling</td>
     <td align="center"><img src="art/poses/watering.png" alt="Watering the plant" width="168"><br>Watering the plant</td>
-    <td align="center"><img src="art/poses/fitness.png" alt="Fitness" width="168"><br>Fitness</td>
-    <td align="center"><img src="art/poses/skateboard.png" alt="Skateboard" width="168"><br>Skateboard</td>
+    <td align="center"><img src="art/poses/flower_boom.png" alt="Watering: the flower explodes" width="168"><br>Watering: the flower explodes</td>
+    <td align="center"><img src="art/poses/dusting.png" alt="Dusting" width="168"><br>Dusting</td>
   </tr>
   <tr>
+    <td align="center"><img src="art/poses/sweeping.png" alt="Sweeping" width="168"><br>Sweeping</td>
+    <td align="center"><img src="art/poses/fitness.png" alt="Fitness" width="168"><br>Fitness</td>
+    <td align="center"><img src="art/poses/skateboard.png" alt="Skateboard" width="168"><br>Skateboard</td>
     <td align="center"><img src="art/poses/off_the_edge.png" alt="Skateboard: off the edge" width="168"><br>Skateboard: off the edge</td>
+  </tr>
+  <tr>
     <td align="center"><img src="art/poses/umbrella.png" alt="Rain" width="168"><br>Rain</td>
     <td align="center"><img src="art/poses/rainbow.png" alt="Rainbow" width="168"><br>Rainbow</td>
     <td align="center"><img src="art/poses/coffee.png" alt="Coffee" width="168"><br>Coffee</td>
+    <td align="center"><img src="art/poses/parachute.png" alt="Parachute" width="168"><br>Parachute</td>
   </tr>
   <tr>
-    <td align="center"><img src="art/poses/parachute.png" alt="Parachute" width="168"><br>Parachute</td>
     <td align="center"><img src="art/poses/rocket_build.png" alt="Rocket: building" width="168"><br>Rocket: building</td>
     <td align="center"><img src="art/poses/rocket_launch.png" alt="Rocket: takeoff" width="168"><br>Rocket: takeoff</td>
     <td align="center"><img src="art/poses/dizzy.png" alt="Dizzy" width="168"><br>Dizzy</td>
+    <td align="center"><img src="art/poses/santa.png" alt="December" width="168"><br>December</td>
   </tr>
   <tr>
-    <td align="center"><img src="art/poses/santa.png" alt="December" width="168"><br>December</td>
     <td align="center"><img src="art/poses/witch.png" alt="Halloween" width="168"><br>Halloween</td>
     <td align="center"><img src="art/poses/party.png" alt="Party day" width="168"><br>Party day</td>
   </tr>

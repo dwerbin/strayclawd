@@ -32,6 +32,8 @@ enum TrayCommand : UINT {
     kCmdPlayWizard = 1046,
     kCmdPlayGreyWizard = 1047,
     kCmdPlayRocket = 1048,
+    kCmdPlayDust = 1049,
+    kCmdPlaySweep = 1050,
     kCmdFollowTyping = 1022,
     kCmdPartyToday = 1023,
     kCmdQuit = 1099,

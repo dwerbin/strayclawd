@@ -33,7 +33,6 @@ void Settings::Load()
     paused = ReadDword(L"Paused", 0) != 0;
     followTyping = ReadDword(L"FollowTyping", 0) != 0;
     partyDate = ReadDword(L"PartyDate", 0);
-    plantDay = ReadDword(L"PlantDay", 0);
     plantLevel = ReadDword(L"PlantLevel", 0);
 }
 
@@ -43,7 +42,6 @@ void Settings::Save() const
     WriteDword(L"Paused", paused ? 1 : 0);
     WriteDword(L"FollowTyping", followTyping ? 1 : 0);
     WriteDword(L"PartyDate", partyDate);
-    WriteDword(L"PlantDay", plantDay);
     WriteDword(L"PlantLevel", plantLevel);
 }
 

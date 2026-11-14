@@ -8,7 +8,6 @@ struct Settings {
     bool paused = false;
     bool followTyping = false;
     unsigned long partyDate = 0;
-    unsigned long plantDay = 0;
     unsigned long plantLevel = 0;
 
     void Load();

@@ -327,10 +327,64 @@ std::vector<Scene> Scenes()
         sc.pose.right = Claw::Up;
         sc.pose.lookX = 1;
         sc.pose.lookY = 1;
-        sc.back = [](Canvas& c, int, int) { c.DrawPlant(kCrabX + 20, kFeetRow - 1, 4); };
+        sc.back = [](Canvas& c, int, int) { c.DrawPlant(kCrabX + 20, kFeetRow - 1, 5); };
         sc.front = [](Canvas& c, int, int) {
             c.DrawGlyph('c', kCrabX + 22, kCrabY + 0, kRain, 255);
             c.DrawGlyph('c', kCrabX + 21, kCrabY + 3, kRain, 200);
+        };
+    }
+    {
+        Scene& sc = add("flower_boom");
+        sc.pose.tool = Tool::Can;
+        sc.pose.left = Claw::High;
+        sc.pose.right = Claw::Mid;
+        sc.pose.eyes = Eyes::Surprised;
+        sc.pose.lookX = 1;
+        sc.back = [](Canvas& c, int, int) { c.DrawPlant(kCrabX + 20, kFeetRow - 1, 0); };
+        sc.front = [](Canvas& c, int, int) {
+            const int cx = kCrabX + 22;
+            const int cy = kFeetRow - 15;
+            for (int i = 0; i < 14; ++i) {
+                const double a = 2.0 * kPi * i / 14.0;
+                const int x = cx + static_cast<int>(std::lround(std::cos(a) * 9.0));
+                const int y = cy + static_cast<int>(std::lround(std::sin(a) * 7.0));
+                c.DrawGlyph('p', x, y, i % 3 == 0 ? kNote : 0xE86FB0, 255);
+            }
+            c.DrawGlyph('*', cx - 1, cy - 2, kBang, 255);
+            c.DrawGlyph('t', cx - 3, cy + 3, 0xBDBDBD, 200);
+            c.DrawGlyph('t', cx + 2, cy + 1, 0xBDBDBD, 200);
+        };
+    }
+    {
+        Scene& sc = add("dusting");
+        sc.pose.tool = Tool::Duster;
+        sc.pose.right = Claw::High;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.lookX = 1;
+        sc.front = [](Canvas& c, int, int) {
+            const int puffs[][3] = {{39, 30, 0}, {42, 34, 1}, {45, 29, 0}, {41, 26, 1}, {47, 33, 0}};
+            for (const auto& q : puffs) {
+                c.DrawGlyph(q[2] ? 't' : 'p', q[0], q[1], 0xCFC6B0, 220);
+            }
+        };
+    }
+    {
+        Scene& sc = add("sweeping");
+        sc.pose.tool = Tool::Broom;
+        sc.pose.toolLift = 1;
+        sc.pose.legs = Legs::LiftLeft;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = 1;
+        sc.front = [](Canvas& c, int ox, int) {
+            const int cx = ox + 25;
+            for (int j = 0; j < 3; ++j) {
+                const int half = 3 - j;
+                for (int x = cx - half; x <= cx + half; ++x) {
+                    c.Put(x, kFeetRow - 1 - j, (x + j) % 3 == 0 ? 0xA89F8A : 0xCFC6B0);
+                }
+            }
+            c.DrawGlyph('p', cx + 3, kFeetRow - 6, 0xCFC6B0, 220);
+            c.DrawGlyph('p', cx + 6, kFeetRow - 4, 0xCFC6B0, 160);
         };
     }
     {

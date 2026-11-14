@@ -104,6 +104,7 @@ constexpr uint32_t kPorthole = 0x6EC6FF;
 constexpr uint32_t kFlameYellow = 0xFFD84A;
 constexpr uint32_t kFlameOrange = 0xF08A24;
 constexpr uint32_t kFlameRed = 0xE23B3B;
+constexpr uint32_t kFeathers[3] = {0xE8D5B0, 0xC9A27E, 0x9C7451};
 
 const int kRing[8][2] = {{-1, -1}, {0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}};
 
@@ -541,6 +542,39 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
         tp(14, top - 8, kInk);
         break;
     }
+    case Tool::Duster: {
+        for (int y = r - 3; y <= r; ++y) {
+            tp(17, y, kWoodDark);
+        }
+        tp(15, r - 9, kFeathers[0]);
+        tp(17, r - 9, kFeathers[1]);
+        tp(19, r - 9, kFeathers[0]);
+        const int tuft[5][2] = {{15, 19}, {14, 20}, {14, 20}, {15, 19}, {16, 18}};
+        for (int j = 0; j < 5; ++j) {
+            for (int x = tuft[j][0]; x <= tuft[j][1]; ++x) {
+                tp(x, r - 8 + j, kFeathers[(x + j) % 3]);
+            }
+        }
+        break;
+    }
+    case Tool::Broom: {
+        const int lift = p.toolLift;
+        const int y0 = r - 3;
+        const int x1 = 19 + lift;
+        const int n = 7 - y0;
+        for (int k = 0; k <= n; ++k) {
+            const int x = 15 + static_cast<int>(std::lround(static_cast<double>(x1 - 15) * k / n));
+            tp(x, y0 + k, kWood);
+        }
+        for (int x = 18; x <= 21; ++x) {
+            tp(x + lift, 7, kWoodDark);
+        }
+        for (int x = 17; x <= 22; ++x) {
+            tp(x + lift, 8, x % 2 ? kStraw : kStrawDark);
+            tp(x + lift, 9, x % 2 ? kStrawDark : kStraw);
+        }
+        break;
+    }
     case Tool::Staff: {
         for (int y = r - 7; y <= kCrabH - 1; ++y) {
             tp(16, y, (y - r) % 4 == 0 ? kWoodDark : kWood);
@@ -615,7 +649,18 @@ void Canvas::DrawPlant(int x, int bottom, int level)
             Put(x + ((k / 2) % 2 ? 1 : 3), y, kGreenLight);
         }
     }
-    if (level >= 4) {
+    if (level >= 5) {
+        const int fy = bottom - 4 - h;
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = 1; dx <= 3; ++dx) {
+                Put(x + dx, fy + dy, kPetal);
+            }
+        }
+        Put(x + 2, fy, kHatYellow);
+        Put(x + 2, fy - 2, kPetal);
+        Put(x, fy, kPetal);
+        Put(x + 4, fy, kPetal);
+    } else if (level >= 4) {
         const int fy = bottom - 4 - h;
         Put(x + 2, fy, kHatYellow);
         Put(x + 1, fy, kPetal);
