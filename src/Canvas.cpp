@@ -30,6 +30,8 @@ const Glyph kGlyphs[] = {
     {'=', {"...", "XXX", "...", "XXX", "..."}},
     {'0', {"XXX", "X.X", "X.X", "X.X", "XXX"}},
     {'1', {".X.", "XX.", ".X.", ".X.", "XXX"}},
+    {'2', {"XX.", "..X", ".X.", "X..", "XXX"}},
+    {'3', {"XX.", "..X", ".X.", "..X", "XX."}},
     {'Z', {"XXX", "..X", ".X.", "X..", "XXX"}},
     {'!', {".X.", ".X.", ".X.", "...", ".X."}},
     {'?', {"XX.", "..X", ".X.", "...", ".X."}},
@@ -96,6 +98,11 @@ constexpr uint32_t kWizardBrim = 0x767B83;
 constexpr uint32_t kStraw = 0xE0C068;
 constexpr uint32_t kStrawDark = 0xB8963E;
 constexpr uint32_t kCrystal = 0xD8E8FF;
+constexpr uint32_t kRocketShade = 0xC8C8C8;
+constexpr uint32_t kPorthole = 0x6EC6FF;
+constexpr uint32_t kFlameYellow = 0xFFD84A;
+constexpr uint32_t kFlameOrange = 0xF08A24;
+constexpr uint32_t kFlameRed = 0xE23B3B;
 
 const int kRing[8][2] = {{-1, -1}, {0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}};
 
@@ -627,6 +634,65 @@ void Canvas::DrawRainbow(int cx, int cy, int alpha)
             if (d < 20.5 && band >= 0 && band < 5) {
                 Put(x, y, colors[band], alpha);
             }
+        }
+    }
+}
+
+void Canvas::DrawRocket(int x, int y, int level, int flame)
+{
+    const int minRows[5] = {20, 13, 9, 6, 0};
+    const int minRow = minRows[std::clamp(level, 0, 4)];
+    auto put = [&](int c, int r, uint32_t rgb) {
+        if (r >= minRow) {
+            Put(x + c, y + r, rgb);
+        }
+    };
+    const int nose[6][2] = {{6, 7}, {5, 8}, {4, 9}, {4, 9}, {3, 10}, {3, 10}};
+    for (int r = 0; r < 6; ++r) {
+        for (int c = nose[r][0]; c <= nose[r][1]; ++c) {
+            put(c, r, kChuteRed);
+        }
+    }
+    for (int r = 6; r <= 17; ++r) {
+        for (int c = 3; c <= 10; ++c) {
+            put(c, r, c == 10 ? kRocketShade : kBlank);
+        }
+    }
+    put(6, 8, kMetal);
+    put(7, 8, kMetal);
+    put(5, 9, kMetal);
+    put(6, 9, kPorthole);
+    put(7, 9, kPorthole);
+    put(8, 9, kMetal);
+    put(6, 10, kMetal);
+    put(7, 10, kMetal);
+    for (int c = 3; c <= 10; ++c) {
+        put(c, 13, kChuteRed);
+    }
+    put(2, 13, kChuteRed);
+    put(11, 13, kChuteRed);
+    for (int r = 14; r <= 18; ++r) {
+        const int w = r == 14 ? 1 : 2;
+        for (int k = 0; k < w + 1; ++k) {
+            put(2 - k, r, kChuteRed);
+            put(11 + k, r, kChuteRed);
+        }
+    }
+    for (int c = 4; c <= 9; ++c) {
+        put(c, 18, kPanEdge);
+    }
+    for (int c = 5; c <= 8; ++c) {
+        put(c, 19, kPanIn);
+    }
+    if (flame <= 0) {
+        return;
+    }
+    const int len = flame % 2 ? 4 : 3;
+    const uint32_t colors[4] = {kFlameYellow, kFlameYellow, kFlameOrange, kFlameRed};
+    const int widths[4] = {3, 2, 1, 1};
+    for (int j = 0; j < len; ++j) {
+        for (int c = 7 - widths[j]; c <= 6 + widths[j]; ++c) {
+            Put(x + c, y + 20 + j, colors[j]);
         }
     }
 }

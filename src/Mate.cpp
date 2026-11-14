@@ -42,6 +42,7 @@ constexpr uint32_t kPea = 0x5DBB4A;
 constexpr uint32_t kTomato = 0xE23B3B;
 constexpr uint32_t kSpellRed = 0xFF5A5A;
 constexpr uint32_t kFireworks[4] = {0xE8505B, 0x4FC3E8, 0xF2C14E, 0x5DBB4A};
+constexpr uint32_t kSmoke = 0xBDBDBD;
 constexpr double kPi = 3.14159265358979323846;
 
 constexpr char kCodeGlyphs[] = "{};<>/=01";
@@ -157,6 +158,7 @@ void Mate::ApplySeason(double dt)
             pose_.hat = Hat::Party;
         } else if (christmas) {
             pose_.hat = Hat::Santa;
+            pose_.beard = true;
         } else if (halloween) {
             pose_.hat = Hat::Witch;
         }
@@ -360,6 +362,7 @@ void Mate::OnCommand(UINT id)
     case kCmdPlayUmbrella: PlayAct(Act::Umbrella); break;
     case kCmdPlayCoffee: PlayAct(Act::Coffee); break;
     case kCmdPlayYawn: PlayAct(Act::Yawn); break;
+    case kCmdPlayRocket: PlayAct(Act::Rocket); break;
     case kCmdFollowTyping:
         settings_.followTyping = !settings_.followTyping;
         settings_.Save();
@@ -853,7 +856,7 @@ void Mate::NextActivity()
         {Act::Typing, 5}, {Act::Walk, 3}, {Act::Wave, 1}, {Act::Look, 2}, {Act::Dance, 2},
         {Act::Sleep, night ? 4 : 1}, {Act::Think, 2}, {Act::Sneeze, 1}, {Act::Sit, 2},
         {Act::Build, 1},  {Act::Paint, 1}, {Act::Magic, 1}, {Act::Cook, 1},
-        {Act::Wizard, 1}, {Act::GreyWizard, 1},
+        {Act::Wizard, 1}, {Act::GreyWizard, 1}, {Act::Rocket, 1},
         {Act::Fish, 1},   {Act::Read, 1},  {Act::Juggle, 1}, {Act::Water, 1},
         {Act::Fitness, 1}, {Act::Skate, 1}, {Act::Umbrella, 1},
         {Act::Coffee, morning ? 3 : 0}, {Act::Yawn, evening ? 2 : 0},
@@ -891,6 +894,7 @@ void Mate::BeginAct(Act a)
     phase_ = 0;
     liftPos_ = 0.0;
     liftV_ = 0.0;
+    flyY_ = 0.0;
     const double s = scale_;
     switch (a) {
     case Act::Build: actDur_ = 8.4; break;
@@ -905,6 +909,10 @@ void Mate::BeginAct(Act a)
     case Act::Magic: actDur_ = 6.2; break;
     case Act::Wizard: actDur_ = 7.0; break;
     case Act::GreyWizard: actDur_ = 7.2; break;
+    case Act::Rocket:
+        actDur_ = 20.0;
+        propSide_ = SideWithRoom();
+        break;
     case Act::Cook: actDur_ = 7.6; break;
     case Act::Stare: {
         actDur_ = Rnd(2.5, 4.0);
@@ -1126,6 +1134,9 @@ void Mate::Tick(double dt)
     shake_ = 0;
     lift_ = 0;
     ladderH_ = 0;
+    rocketLevel_ = 0;
+    rocketRide_ = false;
+    rocketFlame_ = 0;
     easel_ = false;
     chuteFold_ = -1;
     stars_ = false;
@@ -1267,7 +1278,7 @@ void Mate::StepState(double dt)
             StartFall(0.0, 0.0);
             return;
         }
-        SetZ(surface_ == Surface::Window ? ZMode::Above : ZMode::Free);
+        SetZ(surface_ == Surface::Window && flyY_ <= 0.0 ? ZMode::Above : ZMode::Free);
         coverCheck_ -= dt;
         if (coverCheck_ <= 0.0) {
             coverCheck_ = 0.5;
@@ -1297,7 +1308,7 @@ void Mate::StepState(double dt)
         StepActivity(dt);
         if (state_ == State::Active) {
             footX_ = surfRect_.left + relX_;
-            footY_ = edge_;
+            footY_ = edge_ - flyY_;
         }
         return;
 
@@ -1713,6 +1724,7 @@ void Mate::StepActivity(double dt)
     case Act::Magic: StepMagic(dt); break;
     case Act::Wizard: StepWizard(dt); break;
     case Act::GreyWizard: StepGreyWizard(dt); break;
+    case Act::Rocket: StepRocket(dt); break;
     case Act::Cook: StepCook(dt); break;
 
     case Act::Stare: {
@@ -2122,6 +2134,90 @@ void Mate::StepGreyWizard(double dt)
     pose_.right = Claw::Mid;
     if (t > 6.2 && t < 6.6) {
         pose_.body = Body::Crouch;
+    }
+}
+
+void Mate::StepRocket(double dt)
+{
+    const double t = actT_;
+    const double s = scale_;
+    const int side = propSide_;
+    const double rocketX = side > 0 ? kCrabX + 26 : kCrabX - 10;
+    pose_.lookX = side;
+    if (t < 4.5) {
+        if (phase_ == 0) {
+            phase_ = 1;
+            Puff(rocketX, kFeetRow - 4, 6, kWhite);
+        }
+        if (t < 0.5) {
+            return;
+        }
+        const int level = std::min(4, 1 + static_cast<int>((t - 0.5) / 1.0));
+        rocketLevel_ = level;
+        if (actFlag_ != level) {
+            actFlag_ = level;
+            Puff(rocketX, kFeetRow - 4 * level - 2, 3, kWhite);
+        }
+        pose_.tool = Tool::Hammer;
+        pose_.toolSide = side;
+        Claw& arm = side > 0 ? pose_.right : pose_.left;
+        const int k = static_cast<int>((t - 0.5) / 0.25);
+        const bool up = k % 2 == 0;
+        arm = up ? Claw::High : Claw::Up;
+        if (!up && counter_ != k) {
+            counter_ = k;
+            Spawn('*', side > 0 ? kCrabX + 17 : kCrabX - 4, kCrabY - 6, side * Rnd(2.0, 10.0), Rnd(-12.0, -5.0), 0.4, kBang);
+        }
+        return;
+    }
+    if (t < 5.0) {
+        rocketLevel_ = 4;
+        pose_.eyes = Eyes::Happy;
+        if (phase_ == 1) {
+            phase_ = 2;
+            hopV_ = 35.0;
+        }
+        return;
+    }
+    rocketRide_ = true;
+    pose_.lookX = 0;
+    pose_.left = Claw::High;
+    pose_.right = Claw::High;
+    if (phase_ == 2) {
+        phase_ = 3;
+        Puff(kCrabX + 8, kCrabY + 4, 8, kWhite);
+        Puff(rocketX, kFeetRow - 8, 6, kWhite);
+    }
+    if (t < 6.5) {
+        const int n = 3 - static_cast<int>((t - 5.0) / 0.5);
+        if (counter_ != 100 + n) {
+            counter_ = 100 + n;
+            Spawn(static_cast<char>('0' + n), kCrabX + 6, kCrabY - 18, 0.0, -4.0, 0.5, kWhite);
+        }
+        pose_.lookY = -1;
+        return;
+    }
+    rocketFlame_ = 1 + static_cast<int>(t / 0.06) % 2;
+    const bool flying = t >= 7.0;
+    timerA_ -= dt;
+    if (timerA_ <= 0.0) {
+        timerA_ = 0.05;
+        Spawn(Rnd() < 0.5 ? 'p' : 't', kCrabX + 7 + RndI(-3, 3), kFeetRow + 3, Rnd(-14.0, 14.0),
+              flying ? Rnd(30.0, 50.0) : Rnd(-6.0, -2.0), 0.7, kSmoke, 0.0, 0.8);
+    }
+    if (!flying) {
+        pose_.eyes = Eyes::Surprised;
+        shake_ = (static_cast<int>(t / 0.04) % 2) ? 1 : -1;
+        return;
+    }
+    const double ft = t - 7.0;
+    pose_.eyes = Eyes::Happy;
+    pose_.lookY = -1;
+    flyY_ = 0.5 * 500.0 * ft * ft * s;
+    const double windowBottom = edge_ - flyY_ + (kCanvasH - kFeetRow) * s;
+    if (windowBottom < GetSystemMetrics(SM_YVIRTUALSCREEN)) {
+        flyY_ = 0.0;
+        Hide();
     }
 }
 
@@ -2574,6 +2670,11 @@ void Mate::Render()
     const int oy = kCrabY - static_cast<int>(std::lround(hop_)) - lift_;
     if (ladderH_ > 0) {
         canvas_.DrawLadder(kCrabX + 5, kCrabY + kCrabH - 1, ladderH_);
+    }
+    if (rocketRide_) {
+        canvas_.DrawRocket(ox + 1, oy - 10, 4, rocketFlame_);
+    } else if (rocketLevel_ > 0) {
+        canvas_.DrawRocket(propSide_ > 0 ? kCrabX + 19 : kCrabX - 17, kFeetRow - 20, rocketLevel_, 0);
     }
     if (easel_) {
         canvas_.DrawEasel(easelSide_ > 0 ? kCrabX + 18 : kCrabX - 11, kCrabY - 1, painting_, revealed_);

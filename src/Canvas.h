@@ -62,6 +62,7 @@ public:
     void DrawParachute(int cx, int top, int fold);
     void DrawPlant(int x, int bottom, int level);
     void DrawRainbow(int cx, int cy, int alpha);
+    void DrawRocket(int x, int y, int level, int flame);
     void DrawLine(int x0, int y0, int x1, int y1, uint32_t rgb, int alpha = 255);
     int PixelWidth() const { return lw_ * scale_; }
     int PixelHeight() const { return lh_ * scale_; }

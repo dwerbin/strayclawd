@@ -385,6 +385,29 @@ std::vector<Scene> Scenes()
         sc.front = [](Canvas& c, int ox, int oy) { c.DrawParachute(ox + 8, oy - 14, 0); };
     }
     {
+        Scene& sc = add("rocket_build");
+        sc.pose.tool = Tool::Hammer;
+        sc.pose.right = Claw::Up;
+        sc.pose.lookX = 1;
+        sc.back = [](Canvas& c, int, int) { c.DrawRocket(kCrabX + 19, kFeetRow - 20, 3, 0); };
+        sc.front = [](Canvas& c, int, int) { c.DrawGlyph('*', kCrabX + 17, kCrabY - 8, kBang, 255); };
+    }
+    {
+        Scene& sc = add("rocket_launch");
+        sc.pose.left = Claw::High;
+        sc.pose.right = Claw::High;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.lookY = -1;
+        sc.dy = -14;
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawRocket(ox + 1, oy - 10, 4, 1); };
+        sc.front = [](Canvas& c, int, int) {
+            const int puffs[][3] = {{24, 46, 0}, {30, 48, 1}, {20, 50, 1}, {33, 51, 0}, {27, 53, 1}, {16, 47, 0}};
+            for (const auto& q : puffs) {
+                c.DrawGlyph(q[2] ? 't' : 'p', q[0], q[1], 0xBDBDBD, 220);
+            }
+        };
+    }
+    {
         Scene& sc = add("dizzy");
         sc.pose.eyes = Eyes::Dizzy;
         sc.pose.frame = 3;
@@ -393,6 +416,7 @@ std::vector<Scene> Scenes()
     {
         Scene& sc = add("santa");
         sc.pose.hat = Hat::Santa;
+        sc.pose.beard = true;
         sc.pose.eyes = Eyes::Happy;
         sc.back = [](Canvas& c, int, int) {
             const int flakes[][2] = {{5, 6}, {14, 18}, {44, 9}, {50, 24}, {9, 30}, {36, 2}, {28, 14}, {47, 38}};

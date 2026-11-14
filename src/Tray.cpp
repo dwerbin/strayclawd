@@ -50,6 +50,7 @@ void Tray::ShowMenu(HWND owner, const Settings& settings, bool crabVisible) cons
     AppendMenuW(play, MF_STRING, kCmdPlayUmbrella, L"Rain and rainbow");
     AppendMenuW(play, MF_STRING, kCmdPlayCoffee, L"Coffee");
     AppendMenuW(play, MF_STRING, kCmdPlayYawn, L"Yawn");
+    AppendMenuW(play, MF_STRING, kCmdPlayRocket, L"Rocket");
 
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING, kCmdShow, L"Show now");

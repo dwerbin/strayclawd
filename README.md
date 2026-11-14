@@ -31,8 +31,8 @@ Tray icon (right click):
 
 - Show now / Hide
 - Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Magic: young
-  wizard, Magic: grey wizard, Cook, Dizzy, Fishing, Reading, Juggling, Watering the plant, Fitness, Skateboard, Rain and rainbow,
-  Coffee, Yawn)
+  wizard, Magic: grey wizard, Cook, Dizzy, Fishing, Reading, Juggling, Watering the plant,
+  Fitness, Skateboard, Rain and rainbow, Coffee, Yawn, Rocket)
 - Type along with me / Today is a party day
 - Frequency: Rare (5-15 min), Normal (1-5 min), Often (20-60 s)
 - Pause
@@ -68,9 +68,11 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   - Fitness: push-ups, then a barbell, with sweat drops.
   - Skateboard along the edge, with a jump at the end.
   - Rain: he opens an umbrella, then a rainbow appears.
+  - Rocket: he builds a small rocket next to him with a hammer, jumps on it, counts down
+    3, 2, 1, and takes off; he leaves the screen by the top and comes back later.
 - Time of day: coffee in the morning (6-11 h), yawns after lunch and in the evening, more
   sleep and a nightcap at night (21-6 h).
-- Seasons: Santa hat and snow in December, witch hat from 24 to 31 October, party hat and
+- Seasons: Santa hat, white beard and snow in December, witch hat from 24 to 31 October, party hat and
   confetti on 1 January and on your party day (tray: "Today is a party day").
 - He sits more often on the window you are using.
 - Sometimes, when the cursor comes near and just above him, he chases it along the edge and
@@ -142,8 +144,12 @@ Settings are stored in `HKCU\Software\StrayClawd`.
     <td align="center"><img src="art/poses/parachute.png" alt="Parachute" width="168"><br>Parachute</td>
   </tr>
   <tr>
+    <td align="center"><img src="art/poses/rocket_build.png" alt="Rocket: building" width="168"><br>Rocket: building</td>
+    <td align="center"><img src="art/poses/rocket_launch.png" alt="Rocket: takeoff" width="168"><br>Rocket: takeoff</td>
     <td align="center"><img src="art/poses/dizzy.png" alt="Dizzy" width="168"><br>Dizzy</td>
     <td align="center"><img src="art/poses/santa.png" alt="December" width="168"><br>December</td>
+  </tr>
+  <tr>
     <td align="center"><img src="art/poses/witch.png" alt="Halloween" width="168"><br>Halloween</td>
     <td align="center"><img src="art/poses/party.png" alt="Party day" width="168"><br>Party day</td>
   </tr>
