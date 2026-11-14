@@ -25,7 +25,7 @@ private:
     enum class Act { Sit, Typing, Walk, Wave, Look, Dance, Sleep, Think, Sneeze, React,
                      Build, Paint, Magic, Cook, Stare, Dizzy,
                      Fish, Read, Juggle, Water, Fitness, Skate, Umbrella, Coffee, Yawn, Chase,
-                     Wizard, GreyWizard, Rocket, Dust, Sweep };
+                     Wizard, GreyWizard, Rocket, Dust, Sweep, Yoga };
     enum class Surface { None, Window, Ground };
     enum class ZMode { Free, Above, Behind };
 
@@ -83,6 +83,7 @@ private:
     void StepRocket(double dt);
     void StepDust(double dt);
     void StepSweep(double dt);
+    void StepYoga(double dt);
     void StepCook(double dt);
     void StepFish(double dt);
     void StepRead(double dt);
@@ -196,6 +197,7 @@ private:
     double skatePos_ = 0.0;
     bool panicFall_ = false;
     int dustPile_ = 0;
+    int yogaMat_ = 0;
     bool easel_ = false;
     int easelSide_ = 1;
     int chuteFold_ = -1;

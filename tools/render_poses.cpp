@@ -88,6 +88,15 @@ void Rain(Canvas& c, bool skipCrab)
     }
 }
 
+void Mat(Canvas& c)
+{
+    const int x0 = kCrabX - 3;
+    for (int x = x0; x < x0 + 22; ++x) {
+        c.Put(x, kFeetRow - 2, (x - x0) % 5 == 0 ? 0xB79BE0 : 0x8E6BBF);
+        c.Put(x, kFeetRow - 1, 0x6A4C96);
+    }
+}
+
 std::vector<Scene> Scenes()
 {
     std::vector<Scene> s;
@@ -385,6 +394,32 @@ std::vector<Scene> Scenes()
             }
             c.DrawGlyph('p', cx + 3, kFeetRow - 6, 0xCFC6B0, 220);
             c.DrawGlyph('p', cx + 6, kFeetRow - 4, 0xCFC6B0, 160);
+        };
+    }
+    {
+        Scene& sc = add("yoga_tree");
+        sc.pose.hat = Hat::Headband;
+        sc.pose.legs = Legs::LiftLeft;
+        sc.pose.left = Claw::High;
+        sc.pose.right = Claw::High;
+        sc.pose.eyes = Eyes::Closed;
+        sc.dy = -2;
+        sc.back = [](Canvas& c, int, int) { Mat(c); };
+    }
+    {
+        Scene& sc = add("yoga_lotus");
+        sc.pose.hat = Hat::Headband;
+        sc.pose.legs = Legs::Spread;
+        sc.pose.body = Body::Crouch;
+        sc.pose.left = Claw::Mid;
+        sc.pose.right = Claw::Mid;
+        sc.pose.eyes = Eyes::Closed;
+        sc.dy = -7;
+        sc.back = [](Canvas& c, int, int) { Mat(c); };
+        sc.front = [](Canvas& c, int, int) {
+            c.DrawGlyph('s', kCrabX - 3, kCrabY - 6, kWhite, 200);
+            c.DrawGlyph('s', kCrabX + 17, kCrabY - 9, kWhite, 170);
+            c.DrawGlyph('s', kCrabX + 8, kCrabY - 14, kWhite, 130);
         };
     }
     {

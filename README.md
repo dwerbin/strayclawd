@@ -32,7 +32,8 @@ Tray icon (right click):
 - Show now / Hide
 - Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Magic: young
   wizard, Magic: grey wizard, Cook, Dizzy, Fishing, Reading, Juggling, Watering the plant,
-  Fitness, Skateboard, Rain and rainbow, Coffee, Yawn, Rocket, Dusting, Sweeping)
+  Fitness, Skateboard, Rain and rainbow, Coffee, Yawn, Rocket, Dusting, Sweeping,
+  Yoga)
 - Type along with me / Today is a party day
 - Frequency: Rare (5-15 min), Normal (1-5 min), Often (20-60 s)
 - Pause
@@ -76,6 +77,9 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   - Dusting: a feather duster, on one side then the other; the dust makes him sneeze.
   - Sweeping: he walks along the edge with a broom and pushes a growing pile of dust, then
     sweeps it over the edge and wipes his brow.
+  - Yoga: he unrolls a mat and puts on a headband; arms up while breathing, the tree pose
+    (he almost loses his balance), the warrior pose, then he floats above the mat in a lotus
+    pose. He greets you with a heart and rolls the mat up.
 - Time of day: coffee in the morning (6-11 h), yawns after lunch and in the evening, more
   sleep and a nightcap at night (21-6 h).
 - Seasons: Santa hat, white beard and snow in December, witch hat from 24 to 31 October, party hat and
@@ -145,23 +149,25 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   </tr>
   <tr>
     <td align="center"><img src="art/poses/sweeping.png" alt="Sweeping" width="168"><br>Sweeping</td>
+    <td align="center"><img src="art/poses/yoga_tree.png" alt="Yoga: tree pose" width="168"><br>Yoga: tree pose</td>
+    <td align="center"><img src="art/poses/yoga_lotus.png" alt="Yoga: floating lotus" width="168"><br>Yoga: floating lotus</td>
     <td align="center"><img src="art/poses/fitness.png" alt="Fitness" width="168"><br>Fitness</td>
+  </tr>
+  <tr>
     <td align="center"><img src="art/poses/skateboard.png" alt="Skateboard" width="168"><br>Skateboard</td>
     <td align="center"><img src="art/poses/off_the_edge.png" alt="Skateboard: off the edge" width="168"><br>Skateboard: off the edge</td>
-  </tr>
-  <tr>
     <td align="center"><img src="art/poses/umbrella.png" alt="Rain" width="168"><br>Rain</td>
     <td align="center"><img src="art/poses/rainbow.png" alt="Rainbow" width="168"><br>Rainbow</td>
+  </tr>
+  <tr>
     <td align="center"><img src="art/poses/coffee.png" alt="Coffee" width="168"><br>Coffee</td>
     <td align="center"><img src="art/poses/parachute.png" alt="Parachute" width="168"><br>Parachute</td>
-  </tr>
-  <tr>
     <td align="center"><img src="art/poses/rocket_build.png" alt="Rocket: building" width="168"><br>Rocket: building</td>
     <td align="center"><img src="art/poses/rocket_launch.png" alt="Rocket: takeoff" width="168"><br>Rocket: takeoff</td>
-    <td align="center"><img src="art/poses/dizzy.png" alt="Dizzy" width="168"><br>Dizzy</td>
-    <td align="center"><img src="art/poses/santa.png" alt="December" width="168"><br>December</td>
   </tr>
   <tr>
+    <td align="center"><img src="art/poses/dizzy.png" alt="Dizzy" width="168"><br>Dizzy</td>
+    <td align="center"><img src="art/poses/santa.png" alt="December" width="168"><br>December</td>
     <td align="center"><img src="art/poses/witch.png" alt="Halloween" width="168"><br>Halloween</td>
     <td align="center"><img src="art/poses/party.png" alt="Party day" width="168"><br>Party day</td>
   </tr>

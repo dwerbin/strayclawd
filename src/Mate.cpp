@@ -47,6 +47,10 @@ constexpr uint32_t kBoard = 0xB07A3B;
 constexpr uint32_t kPetal = 0xE86FB0;
 constexpr uint32_t kDust = 0xCFC6B0;
 constexpr uint32_t kDustDark = 0xA89F8A;
+constexpr uint32_t kMat = 0x8E6BBF;
+constexpr uint32_t kMatLight = 0xB79BE0;
+constexpr uint32_t kMatDark = 0x6A4C96;
+constexpr int kMatWidth = 22;
 constexpr double kPi = 3.14159265358979323846;
 
 constexpr char kCodeGlyphs[] = "{};<>/=01";
@@ -369,6 +373,7 @@ void Mate::OnCommand(UINT id)
     case kCmdPlayRocket: PlayAct(Act::Rocket); break;
     case kCmdPlayDust: PlayAct(Act::Dust); break;
     case kCmdPlaySweep: PlayAct(Act::Sweep); break;
+    case kCmdPlayYoga: PlayAct(Act::Yoga); break;
     case kCmdFollowTyping:
         settings_.followTyping = !settings_.followTyping;
         settings_.Save();
@@ -863,6 +868,7 @@ void Mate::NextActivity()
         {Act::Sleep, night ? 4 : 1}, {Act::Think, 2}, {Act::Sneeze, 1}, {Act::Sit, 2},
         {Act::Build, 1},  {Act::Paint, 1}, {Act::Magic, 1}, {Act::Cook, 1},
         {Act::Wizard, 1}, {Act::GreyWizard, 1}, {Act::Rocket, 1}, {Act::Dust, 1}, {Act::Sweep, 1},
+        {Act::Yoga, 1},
         {Act::Fish, 1},   {Act::Read, 1},  {Act::Juggle, 1}, {Act::Water, 1},
         {Act::Fitness, 1}, {Act::Skate, 1}, {Act::Umbrella, 1},
         {Act::Coffee, morning ? 3 : 0}, {Act::Yawn, evening ? 2 : 0},
@@ -921,6 +927,7 @@ void Mate::BeginAct(Act a)
         propSide_ = SideWithRoom();
         break;
     case Act::Dust: actDur_ = 7.0; break;
+    case Act::Yoga: actDur_ = 11.0; break;
     case Act::Sweep:
         actDur_ = 7.5;
         dir_ = SideWithRoom();
@@ -1145,6 +1152,7 @@ void Mate::Tick(double dt)
     rocketLevel_ = 0;
     rocketShift_ = 0;
     dustPile_ = 0;
+    yogaMat_ = 0;
     rocketRide_ = false;
     rocketFlame_ = 0;
     easel_ = false;
@@ -1749,6 +1757,7 @@ void Mate::StepActivity(double dt)
     case Act::Rocket: StepRocket(dt); break;
     case Act::Dust: StepDust(dt); break;
     case Act::Sweep: StepSweep(dt); break;
+    case Act::Yoga: StepYoga(dt); break;
     case Act::Cook: StepCook(dt); break;
 
     case Act::Stare: {
@@ -2357,6 +2366,88 @@ void Mate::StepSweep(double dt)
     }
 }
 
+void Mate::StepYoga(double dt)
+{
+    (void)dt;
+    const double t = actT_;
+    const double end = actDur_;
+    const bool breatheIn = std::fmod(t, 2.4) < 1.2;
+    if (t < 0.6) {
+        yogaMat_ = std::max(1, static_cast<int>(kMatWidth * t / 0.6));
+        pose_.lookY = 1;
+        pose_.lookX = 1;
+        return;
+    }
+    if (t > end - 0.6) {
+        yogaMat_ = std::max(1, static_cast<int>(kMatWidth * (end - t) / 0.6));
+        pose_.eyes = Eyes::Happy;
+        pose_.lookY = 1;
+        return;
+    }
+    yogaMat_ = kMatWidth;
+    lift_ = 2;
+    pose_.hat = Hat::Headband;
+    if (phase_ == 0) {
+        phase_ = 1;
+        hopV_ = 25.0;
+    }
+    if (t < 1.0) {
+        pose_.eyes = Eyes::Happy;
+        return;
+    }
+    if (t < 3.0) {
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+        pose_.eyes = Eyes::Closed;
+        pose_.body = breatheIn ? Body::Normal : Body::Crouch;
+        return;
+    }
+    if (t < 5.0) {
+        pose_.legs = Legs::LiftLeft;
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+        pose_.eyes = Eyes::Closed;
+        if (t > 3.8 && t < 4.4) {
+            pose_.eyes = Eyes::Surprised;
+            shake_ = (static_cast<int>(t / 0.09) % 2) ? 1 : -1;
+            if (counter_ != 1) {
+                counter_ = 1;
+                Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -8.0, 0.6, kBang);
+            }
+        }
+        return;
+    }
+    if (t < 7.0) {
+        pose_.legs = Legs::Spread;
+        pose_.body = Body::Crouch;
+        pose_.left = Claw::Mid;
+        pose_.right = Claw::Mid;
+        pose_.lookX = 1;
+        return;
+    }
+    if (t < 9.6) {
+        const double lt = t - 7.0;
+        pose_.legs = Legs::Spread;
+        pose_.body = Body::Crouch;
+        pose_.left = Claw::Mid;
+        pose_.right = Claw::Mid;
+        pose_.eyes = Eyes::Closed;
+        const double rise = std::min(1.0, lt / 0.8) * (lt > 1.8 ? std::max(0.0, (2.6 - lt) / 0.8) : 1.0);
+        lift_ = 2 + static_cast<int>(std::lround(5.0 * rise + 0.6 * std::sin(lt * 3.0) * rise));
+        if (rise > 0.5 && Rnd() < 0.12) {
+            Spawn('s', kCrabX + RndI(-2, 15), kCrabY + RndI(-4, 6) - lift_, 0.0, -5.0, 0.8, kWhite, 0.0, 0.8);
+        }
+        return;
+    }
+    pose_.left = Claw::Up;
+    pose_.right = Claw::Up;
+    pose_.eyes = Eyes::Happy;
+    if (counter_ != 2) {
+        counter_ = 2;
+        Spawn('h', kCrabX + 5, kCrabY - 9, 0.0, -9.0, 1.0, kHeart);
+    }
+}
+
 void Mate::StepCook(double dt)
 {
     const double t = actT_;
@@ -2878,6 +2969,20 @@ void Mate::Render()
     const int oy = kCrabY - static_cast<int>(std::lround(hop_)) - lift_;
     if (ladderH_ > 0) {
         canvas_.DrawLadder(kCrabX + 5, kCrabY + kCrabH - 1, ladderH_);
+    }
+    if (yogaMat_ > 0) {
+        const int x0 = kCrabX - 3;
+        for (int x = x0; x < x0 + yogaMat_; ++x) {
+            canvas_.Put(x, kFeetRow - 2, (x - x0) % 5 == 0 ? kMatLight : kMat);
+            canvas_.Put(x, kFeetRow - 1, kMatDark);
+        }
+        if (yogaMat_ < kMatWidth) {
+            const int rx = x0 + yogaMat_;
+            for (int y = kFeetRow - 3; y <= kFeetRow - 1; ++y) {
+                canvas_.Put(rx, y, kMatDark);
+                canvas_.Put(rx + 1, y, kMat);
+            }
+        }
     }
     if (dustPile_ > 0) {
         const int cx = dir_ > 0 ? ox + 25 : ox - 10;

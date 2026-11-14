@@ -105,6 +105,8 @@ constexpr uint32_t kFlameYellow = 0xFFD84A;
 constexpr uint32_t kFlameOrange = 0xF08A24;
 constexpr uint32_t kFlameRed = 0xE23B3B;
 constexpr uint32_t kFeathers[3] = {0xE8D5B0, 0xC9A27E, 0x9C7451};
+constexpr uint32_t kHeadband = 0x3FB8AF;
+constexpr uint32_t kHeadbandDark = 0x2A8C85;
 
 const int kRing[8][2] = {{-1, -1}, {0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}};
 
@@ -331,6 +333,13 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
             Put(ox + (y >= hb - 3 ? 5 : 6), oy + y, kWizardShade);
         }
         Put(ox + 4, oy + hb - 2, kWizardShade);
+        break;
+    case Hat::Headband:
+        row(hb, 2, 13, kHeadband);
+        Put(ox + 8, oy + hb, kHeadbandDark);
+        Put(ox + 14, oy + hb + 1, kHeadband);
+        Put(ox + 15, oy + hb + 2, kHeadbandDark);
+        Put(ox + 14, oy + hb + 2, kHeadband);
         break;
     case Hat::Party:
         row(hb - 6, 7, 8, kHatYellow);

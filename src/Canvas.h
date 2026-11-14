@@ -8,7 +8,7 @@ enum class Eyes { Open, Closed, Happy, Surprised, Dizzy };
 enum class Claw { High, Up, Mid, Down };
 enum class Legs { Stand, LiftLeft, LiftRight, Spread };
 enum class Body { Normal, Crouch, Squash };
-enum class Hat { None, HardHat, Beret, TopHat, Toque, Nightcap, Santa, Witch, Party, Wizard };
+enum class Hat { None, HardHat, Beret, TopHat, Toque, Nightcap, Santa, Witch, Party, Wizard, Headband };
 enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff, Duster, Broom };
 
 constexpr int kNoBarbell = -99;
