@@ -94,7 +94,8 @@ Settings are stored in `HKCU\Software\StrayClawd`.
   - Skateboard along the edge, over a long distance, with a jump at the end. If he reaches
     the end of the window, he rolls on in the air, stops, looks down, sees there is nothing
     under his feet and falls in a panic, cartoon style.
-  - Rain: he opens an umbrella, then a rainbow appears.
+  - Rain: he opens an umbrella; the drops splash on it and run off its edges, so he stays
+    dry. Then a rainbow appears.
   - Rocket: he builds a small rocket next to him with a hammer, jumps on it, counts down
     3, 2, 1, and takes off; he leaves the screen by the top and comes back later.
   - Dusting: a feather duster, on one side then the other; the dust makes him sneeze.

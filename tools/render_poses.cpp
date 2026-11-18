@@ -83,7 +83,7 @@ void Rain(Canvas& c, bool skipCrab)
         const int x = 2 + static_cast<int>((seed >> 8) % (kW - 4));
         seed = seed * 1103515245u + 12345u;
         const int y = static_cast<int>((seed >> 8) % (kFeetRow - 6));
-        if (skipCrab && x >= kCrabX + 2 && x <= kCrabX + 26) {
+        if (skipCrab && std::abs(x - kCrabX - 12) <= 12 && y > kCrabY - 9) {
             continue;
         }
         c.DrawGlyph('c', x, y, kRain, 200);

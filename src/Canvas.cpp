@@ -538,17 +538,17 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
         for (int y = top - 4; y <= r - 1; ++y) {
             tp(14, y, kInk);
         }
-        const int widths[3] = {7, 9, 11};
+        const int widths[3] = {8, 10, 12};
         for (int j = 0; j < 3; ++j) {
             for (int dx = -widths[j]; dx <= widths[j]; ++dx) {
-                if (j == 2 && (dx + 11) % 4 == 3) {
+                if (j == 2 && (dx + 12) % 4 == 3) {
                     continue;
                 }
-                const uint32_t c = ((dx + 22) / 3) % 2 ? kUmbrella : kPaper;
-                tp(14 + dx, top - 7 + j, c);
+                const uint32_t c = ((dx + 24) / 3) % 2 ? kUmbrella : kPaper;
+                tp(12 + dx, top - 7 + j, c);
             }
         }
-        tp(14, top - 8, kInk);
+        tp(12, top - 8, kInk);
         break;
     }
     case Tool::Duster: {

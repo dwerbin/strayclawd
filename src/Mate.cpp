@@ -2824,15 +2824,33 @@ void Mate::StepSkate(double dt)
 void Mate::StepUmbrella(double dt)
 {
     const double t = actT_;
-    if (t < 4.6) {
+    if (t < 4.4) {
         timerA_ -= dt;
         while (timerA_ <= 0.0) {
             timerA_ += 0.04;
-            const int x = RndI(2, kCanvasW - 3);
-            if (t > 0.9 && x >= kCrabX + 2 && x <= kCrabX + 26) {
+            Spawn('c', RndI(2, kCanvasW - 3), RndI(0, 6), 0.0, 45.0, 1.0, kRain, 0.0, 0.8);
+        }
+    }
+    if (t >= 0.9 && t < 5.2) {
+        const int center = kCrabX + 12;
+        for (size_t i = 0; i < particles_.size(); ++i) {
+            const Particle p = particles_[i];
+            const int dx = static_cast<int>(std::lround(p.x)) - center;
+            if (p.ch != 'c' || p.color != kRain || p.life <= 0.0 || std::abs(dx) > 12) {
                 continue;
             }
-            Spawn('c', x, RndI(0, 6), 0.0, 45.0, 1.0, kRain, 0.0, 0.8);
+            const int roof = kCrabY - 7 + (std::abs(dx) > 8 ? 1 : 0) + (std::abs(dx) > 10 ? 1 : 0);
+            if (p.y + 1.0 < roof || p.y > roof + 4) {
+                continue;
+            }
+            particles_[i].life = 0.0;
+            const double r = Rnd();
+            if (r < 0.35) {
+                const int side = dx < 0 ? -1 : 1;
+                Spawn('c', center + side * 13, kCrabY - 4, side * 2.0, 40.0, 0.4, kRain, 0.0, 0.8);
+            } else if (r < 0.7) {
+                Spawn('p', p.x, roof - 1, Rnd(-10.0, 10.0), Rnd(-9.0, -4.0), 0.25, kRain, 60.0, 0.8);
+            }
         }
     }
     if (t < 0.9) {
