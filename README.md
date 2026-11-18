@@ -29,6 +29,10 @@ click its tray icon for the menu.
   more (see the [gallery](#gallery)).
 - Reacts to the mouse: stares at the cursor, chases it, waves at it, gets dizzy.
 - Drag and throw it; it lands on the next window below.
+- Run it several times for several crabs. When two crabs are close, they play together: talk,
+  toast, cook, juggle, dance, build a big rocket, fix a leaking bomb, fight with light sabers,
+  pray to Saint Algo...
+- Configure the chance of each animation, or turn it off.
 - Time of day and seasons: coffee in the morning, nightcap at night, Santa hat in December,
   witch hat at Halloween.
 - Tiny and light: one exe, no install, no external library.
@@ -48,7 +52,8 @@ the Windows SDK (missing registry entry), it takes the newest SDK found under
 ## Run
 
 Start `build\clawdmate.exe`. The crab shows up after 3 s, then at random times.
-Starting the exe a second time makes the running crab appear now.
+Start the exe again to add another crab: each one has its own tray icon. A crab never uses
+another crab as a surface.
 
 Tray icon (right click):
 
@@ -56,15 +61,20 @@ Tray icon (right click):
 - Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Magic: young
   wizard, Magic: grey wizard, Cook, Dizzy, Fishing, Reading, Juggling, Watering the plant,
   Fitness, Skateboard, Rain and rainbow, Coffee, Yawn, Rocket, Dusting, Sweeping,
-  Yoga)
+  Yoga). "With another crab" starts a duo with the nearest crab on the same edge (up to about
+  400 px away); a "?" means no crab is there, or it is busy.
 - Type along with me / Today is a party day
 - Frequency: Rare (5-15 min), Normal (1-5 min), Often (20-60 s)
 - Pause
 - Start with Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run\StrayClawd`)
+- Configure...: one row per animation. The checkbox turns it on or off. Select one or more
+  rows and move the slider to set their weight. Activities and duos: the chance of a row is
+  its weight divided by the total of its group. Events (parachute, side peek, shy peek,
+  stare, chase, duo) are a percent. OK saves and updates all the running crabs.
 - Quit
 
 Double click on the tray icon = Show now. Right click on the crab opens the same menu.
-Settings are stored in `HKCU\Software\StrayClawd`.
+Settings are stored in `HKCU\Software\StrayClawd` (the animations in its `Animations` subkey).
 
 ## What the crab does
 
@@ -127,6 +137,34 @@ Settings are stored in `HKCU\Software\StrayClawd`.
 - Drag and drop: grab it, throw it; it lands on the first window top edge below, or on the
   taskbar.
 
+## Two crabs together
+
+When two crabs sit on the same edge, not too far from each other, one of them sometimes
+asks the other for a duo (40 % per activity by default, then a pause of 20-40 s). They
+walk to each other, then:
+
+- Look at each other, wave at each other.
+- Talk: "..." speech bubbles above their heads, each one in turn, then they laugh.
+- Juggle together: the balls fly from one crab to the other.
+- Cook together: chef toques and a pot between them; one stirs, the other throws in the
+  vegetables.
+- Build the big rocket (tech 2): one crab plants a "/!\" danger sign, both hammer, the
+  rocket grows, countdown, and both fly away holding on to it.
+- Fix a leaking atomic bomb: neon green liquid on the ground; one crab hammers and sweats,
+  the other sips from a mug and says "THIS IS FINE.".
+- Toast with their mugs.
+- Scheme: sly eyes, whispers, claws rubbed together, then they look at you.
+- Light saber duel: blue against red, with sparks when the blades cross.
+- Boost: one crab gives the other a leg up onto a window above (only when there is one).
+- Dance together, mirrored.
+- Pray to Saint Algo: occult robes with glowing eyes, an altar with candles and a floating
+  golden `{ }`.
+
+The crabs find each other by their window class and talk with window messages (ask, accept,
+decline, end). The one that asks leads: it sends the meeting point and the walk time, and
+draws the shared props (pot, rocket, bomb, altar, sign, balls). If one of them is dragged,
+clicked or hidden, the other stops too.
+
 ## How it works
 
 Pure Win32 + GDI, C++20, no external library.
@@ -139,6 +177,7 @@ Pure Win32 + GDI, C++20, no external library.
   legs, body). Scale 4 at 100 % DPI, per-monitor DPI aware.
 - `src/Scanner.cpp`: `EnumWindows` + DWM frame bounds, in z-order, to find visible edges.
 - `src/Tray.cpp`, `src/Settings.cpp`: tray icon, menu, registry.
+- `src/ConfigDialog.cpp`: the Configure dialog (list view and slider).
 
 ## Gallery
 
@@ -196,6 +235,18 @@ Pure Win32 + GDI, C++20, no external library.
     <td align="center"><img src="art/poses/santa.png" alt="December" width="168"><br>December</td>
     <td align="center"><img src="art/poses/witch.png" alt="Halloween" width="168"><br>Halloween</td>
     <td align="center"><img src="art/poses/party.png" alt="Party day" width="168"><br>Party day</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="art/poses/duo_talk.png" alt="Two crabs talking" width="168"><br>Duo: talk</td>
+    <td align="center"><img src="art/poses/duo_toast.png" alt="Two crabs toasting with mugs" width="168"><br>Duo: toast</td>
+    <td align="center"><img src="art/poses/duo_cook.png" alt="Two crabs cooking" width="168"><br>Duo: cook</td>
+    <td align="center"><img src="art/poses/duo_rocket.png" alt="Two crabs building the big rocket" width="168"><br>Duo: big rocket</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="art/poses/duo_bomb.png" alt="Two crabs and a leaking bomb: this is fine" width="168"><br>Duo: this is fine</td>
+    <td align="center"><img src="art/poses/duo_saber.png" alt="Two crabs in a light saber duel" width="168"><br>Duo: light sabers</td>
+    <td align="center"><img src="art/poses/duo_boost.png" alt="A crab gives the other a leg up" width="168"><br>Duo: boost</td>
+    <td align="center"><img src="art/poses/duo_pray.png" alt="Two cultist crabs pray to Saint Algo" width="168"><br>Duo: Saint Algo</td>
   </tr>
 </table>
 

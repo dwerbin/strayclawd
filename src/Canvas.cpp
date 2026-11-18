@@ -107,6 +107,22 @@ constexpr uint32_t kFlameRed = 0xE23B3B;
 constexpr uint32_t kFeathers[3] = {0xE8D5B0, 0xC9A27E, 0x9C7451};
 constexpr uint32_t kHeadband = 0x3FB8AF;
 constexpr uint32_t kHeadbandDark = 0x2A8C85;
+constexpr uint32_t kRobe = 0x3B2350;
+constexpr uint32_t kRobeShade = 0x2C1A3D;
+constexpr uint32_t kRobeHole = 0x120A1A;
+constexpr uint32_t kRobeTrim = 0xC9A23A;
+constexpr uint32_t kRobeEyes = 0xFFC83A;
+constexpr uint32_t kNeon = 0x39FF14;
+constexpr uint32_t kNeonDark = 0x1FBF0A;
+constexpr uint32_t kBomb = 0x5B6B3A;
+constexpr uint32_t kBombDark = 0x404C28;
+constexpr uint32_t kBombLight = 0x7E8F55;
+constexpr uint32_t kStone = 0x8A827A;
+constexpr uint32_t kStoneLight = 0xB0A8A0;
+constexpr uint32_t kCandle = 0xF4E8C8;
+constexpr uint32_t kSoup = 0xD9822B;
+constexpr uint32_t kSoupLight = 0xF2B35A;
+constexpr uint32_t kGold = 0xF2C14E;
 
 const int kRing[8][2] = {{-1, -1}, {0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}};
 
@@ -193,6 +209,29 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
         }
     }
 
+    if (p.robe) {
+        for (int y = top - 2; y <= kCrabH - 1; ++y) {
+            const int x0 = y == top - 2 ? 5 : (y == top - 1 ? 3 : 1);
+            for (int x = x0; x <= 15 - x0; ++x) {
+                Put(ox + x, oy + y, (x + y) % 6 == 0 ? kRobeShade : kRobe);
+            }
+        }
+        for (int x = 6; x <= 9; ++x) {
+            Put(ox + x, oy + top - 3, kRobe);
+        }
+        Put(ox + 8, oy + top - 4, kRobe);
+        for (int y = top + 1; y <= top + 4; ++y) {
+            for (int x = 3; x <= 12; ++x) {
+                Put(ox + x, oy + y, kRobeHole);
+            }
+        }
+        for (int x = 2; x <= 13; ++x) {
+            Put(ox + x, oy + top + 6, kRobeTrim);
+        }
+        Put(ox + 9, oy + top + 7, kRobeTrim);
+        Put(ox + 9, oy + top + 8, kRobeTrim);
+    }
+
     if (p.broom) {
         for (int x = -3; x <= 16; ++x) {
             Put(ox + x, oy + 8, x == -3 ? kWoodDark : kWood);
@@ -208,30 +247,39 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
         }
     }
 
+    const uint32_t eyeInk = p.robe ? kRobeEyes : kInk;
     const int ey = top + 2 + p.lookY;
     const int eyeCols[2] = {4 + p.lookX, 11 + p.lookX};
     for (int i = 0; i < 2; ++i) {
         const int ex = eyeCols[i];
         switch (p.eyes) {
         case Eyes::Open:
-            Put(ox + ex, oy + ey, kInk);
-            Put(ox + ex, oy + ey + 1, kInk);
+            Put(ox + ex, oy + ey, eyeInk);
+            Put(ox + ex, oy + ey + 1, eyeInk);
             break;
         case Eyes::Closed:
-            Put(ox + ex - (i == 0 ? 1 : 0), oy + ey + 1, kInk);
-            Put(ox + ex + (i == 0 ? 0 : 1), oy + ey + 1, kInk);
+            Put(ox + ex - (i == 0 ? 1 : 0), oy + ey + 1, eyeInk);
+            Put(ox + ex + (i == 0 ? 0 : 1), oy + ey + 1, eyeInk);
             break;
         case Eyes::Happy:
-            Put(ox + ex, oy + ey, kInk);
-            Put(ox + ex - 1, oy + ey + 1, kInk);
-            Put(ox + ex + 1, oy + ey + 1, kInk);
+            Put(ox + ex, oy + ey, eyeInk);
+            Put(ox + ex - 1, oy + ey + 1, eyeInk);
+            Put(ox + ex + 1, oy + ey + 1, eyeInk);
             break;
         case Eyes::Surprised: {
             const int c0 = i == 0 ? ex - 1 : ex;
             for (int y = ey - 1; y <= ey + 1; ++y) {
-                Put(ox + c0, oy + y, kInk);
-                Put(ox + c0 + 1, oy + y, kInk);
+                Put(ox + c0, oy + y, eyeInk);
+                Put(ox + c0 + 1, oy + y, eyeInk);
             }
+            break;
+        }
+        case Eyes::Sly: {
+            const int in = i == 0 ? 1 : -1;
+            Put(ox + ex, oy + ey + 1, eyeInk);
+            Put(ox + ex - in, oy + ey + 1, eyeInk);
+            Put(ox + ex - in, oy + ey - 1, eyeInk);
+            Put(ox + ex, oy + ey, eyeInk);
             break;
         }
         case Eyes::Dizzy: {
@@ -242,7 +290,7 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
                 if (k == f || k == ((f + 1) & 7)) {
                     continue;
                 }
-                Put(ox + cx + kRing[k][0], oy + cy + kRing[k][1], kInk);
+                Put(ox + cx + kRing[k][0], oy + cy + kRing[k][1], eyeInk);
             }
             break;
         }
@@ -599,6 +647,32 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
         }
         break;
     }
+    case Tool::Saber: {
+        tp(16, r - 1, kMetal);
+        tp(16, r, kPanEdge);
+        tp(16, r + 1, kMetal);
+        const uint32_t core = ((p.saberColor >> 1) & 0x7F7F7F) + 0x808080;
+        for (int pass = 0; pass < 2; ++pass) {
+            for (int k = 0; k < p.saberLen; ++k) {
+                int bx = 16;
+                int by = r - 2 - k;
+                if (p.saberAngle == 1) {
+                    bx = 17 + k;
+                } else if (p.saberAngle == 2) {
+                    bx = 17 + k;
+                    by = r - 1;
+                }
+                if (pass == 0) {
+                    for (int j = 0; j < 4; ++j) {
+                        tp(bx + kRing[j * 2 + 1][0], by + kRing[j * 2 + 1][1], p.saberColor, 110);
+                    }
+                } else {
+                    tp(bx, by, core);
+                }
+            }
+        }
+        break;
+    }
     case Tool::None:
         break;
     }
@@ -866,6 +940,287 @@ void Canvas::DrawBubble(int x, int y, int dots)
     }
     Put(x + 1, y + 8, kInk);
     Put(x, y + 10, kInk);
+}
+
+namespace {
+
+struct TextGlyph {
+    char c;
+    const char* rows[5];
+};
+
+const TextGlyph kFont[] = {
+    {'T', {"XXX", ".X.", ".X.", ".X.", ".X."}},
+    {'H', {"X.X", "X.X", "XXX", "X.X", "X.X"}},
+    {'I', {"X", "X", "X", "X", "X"}},
+    {'S', {".XX", "X..", ".X.", "..X", "XX."}},
+    {'F', {"XXX", "X..", "XX.", "X..", "X.."}},
+    {'N', {"X..X", "XX.X", "X.XX", "X..X", "X..X"}},
+    {'E', {"XXX", "X..", "XX.", "X..", "XXX"}},
+    {'.', {".", ".", ".", ".", "X"}},
+    {'!', {"X", "X", "X", ".", "X"}},
+    {'?', {"XX.", "..X", ".X.", "...", ".X."}},
+    {' ', {"..", "..", "..", "..", ".."}},
+};
+
+const TextGlyph* FindText(char c)
+{
+    for (const TextGlyph& g : kFont) {
+        if (g.c == c) {
+            return &g;
+        }
+    }
+    return nullptr;
+}
+
+}
+
+int Canvas::TextWidth(const char* text)
+{
+    int w = 0;
+    for (const char* p = text; *p; ++p) {
+        if (const TextGlyph* g = FindText(*p)) {
+            w += static_cast<int>(std::strlen(g->rows[0])) + 1;
+        }
+    }
+    return std::max(0, w - 1);
+}
+
+void Canvas::DrawText(const char* text, int x, int y, uint32_t rgb, int visible)
+{
+    int n = 0;
+    for (const char* p = text; *p && n < visible; ++p, ++n) {
+        const TextGlyph* g = FindText(*p);
+        if (!g) {
+            continue;
+        }
+        for (int r = 0; r < 5; ++r) {
+            for (int j = 0; g->rows[r][j] != '\0'; ++j) {
+                if (g->rows[r][j] == 'X') {
+                    Put(x + j, y + r, rgb);
+                }
+            }
+        }
+        x += static_cast<int>(std::strlen(g->rows[0])) + 1;
+    }
+}
+
+void Canvas::DrawSpeech(int cx, int bottom, const char* text, int visible)
+{
+    const int w = TextWidth(text) + 6;
+    const int x0 = std::clamp(cx - w / 2, 0, std::max(0, lw_ - w));
+    const int y0 = bottom - 11;
+    for (int j = 0; j < 9; ++j) {
+        for (int i = 0; i < w; ++i) {
+            const bool edgeX = i == 0 || i == w - 1;
+            const bool edgeY = j == 0 || j == 8;
+            if (edgeX && edgeY) {
+                continue;
+            }
+            Put(x0 + i, y0 + j, (edgeX || edgeY) ? kInk : kPaper);
+        }
+    }
+    const int tx = std::clamp(cx, x0 + 2, x0 + w - 4);
+    Put(tx, y0 + 8, kPaper);
+    Put(tx + 1, y0 + 8, kPaper);
+    Put(tx - 1, y0 + 9, kInk);
+    Put(tx, y0 + 9, kPaper);
+    Put(tx + 1, y0 + 9, kInk);
+    Put(tx, y0 + 10, kInk);
+    DrawText(text, x0 + 3, y0 + 2, kInk, visible);
+}
+
+void Canvas::DrawSign(int cx, int bottom)
+{
+    for (int y = bottom - 7; y <= bottom; ++y) {
+        Put(cx, y, kWoodDark);
+    }
+    const int top = bottom - 16;
+    for (int j = 0; j < 9; ++j) {
+        const int hw = (j + 1) / 2;
+        for (int dx = -hw; dx <= hw; ++dx) {
+            const bool edge = dx == -hw || dx == hw || j == 8;
+            Put(cx + dx, top + j, edge ? kInk : kHatYellow);
+        }
+    }
+    for (int j : {3, 4, 5, 7}) {
+        Put(cx, top + j, kInk);
+    }
+}
+
+void Canvas::DrawBigRocket(int cx, int bottom, int level, int flame)
+{
+    const int minRows[6] = {40, 24, 17, 10, 6, 0};
+    const int minRow = minRows[std::clamp(level, 0, 5)];
+    const int top = bottom - 31;
+    auto put = [&](int dx, int r, uint32_t rgb) {
+        if (r >= minRow) {
+            Put(cx + dx, top + r, rgb);
+        }
+    };
+    const int nose[8] = {0, 1, 1, 2, 2, 3, 3, 4};
+    for (int r = 0; r < 8; ++r) {
+        for (int dx = -nose[r]; dx <= nose[r]; ++dx) {
+            put(dx, r, r == 0 ? kWheel : kChuteRed);
+        }
+    }
+    for (int r = 8; r <= 27; ++r) {
+        for (int dx = -4; dx <= 4; ++dx) {
+            uint32_t c = dx == 4 ? kRocketShade : kBlank;
+            if (r == 9 || r == 25) {
+                c = kChuteRed;
+            }
+            put(dx, r, c);
+        }
+    }
+    for (int wy : {12, 17}) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            put(dx, wy - 1, kMetal);
+            put(dx, wy + 1, kMetal);
+            put(dx, wy, kPorthole);
+        }
+        put(-2, wy, kMetal);
+        put(2, wy, kMetal);
+    }
+    const char* two[5] = {"XX.", "..X", ".X.", "X..", "XXX"};
+    for (int j = 0; j < 5; ++j) {
+        for (int i = 0; i < 3; ++i) {
+            if (two[j][i] == 'X') {
+                put(i - 1, 20 + j, kChuteRed);
+            }
+        }
+    }
+    for (int r = 21; r <= 31; ++r) {
+        const int w = std::min(4, (r - 21) / 2 + 1);
+        for (int k = 1; k <= w; ++k) {
+            put(-4 - k, r, kChuteRed);
+            put(4 + k, r, kChuteRed);
+        }
+    }
+    for (int dx = -3; dx <= 3; ++dx) {
+        put(dx, 28, kPanEdge);
+    }
+    for (int dx = -2; dx <= 2; ++dx) {
+        put(dx, 29, kPanIn);
+        put(dx, 30, kPanIn);
+    }
+    if (flame <= 0) {
+        return;
+    }
+    const int len = flame % 2 ? 6 : 5;
+    const uint32_t colors[6] = {kFlameYellow, kFlameYellow, kFlameYellow, kFlameOrange, kFlameOrange, kFlameRed};
+    const int widths[6] = {3, 3, 2, 2, 1, 1};
+    for (int j = 0; j < len; ++j) {
+        for (int dx = -widths[j]; dx <= widths[j]; ++dx) {
+            Put(cx + dx, top + 31 + j, colors[j]);
+        }
+    }
+}
+
+void Canvas::DrawPot(int cx, int bottom, int frame)
+{
+    Put(cx - 4, bottom, kPanEdge);
+    Put(cx + 4, bottom, kPanEdge);
+    for (int y = bottom - 5; y <= bottom - 1; ++y) {
+        const int hw = y == bottom - 1 ? 4 : 5;
+        for (int dx = -hw; dx <= hw; ++dx) {
+            Put(cx + dx, y, (dx == -hw + 1 && y < bottom - 2) ? kPanEdge : kPanIn);
+        }
+    }
+    for (int dx = -6; dx <= 6; ++dx) {
+        Put(cx + dx, bottom - 6, (dx == -6 || dx == 6) ? kPanEdge : kSoup);
+    }
+    Put(cx - 2 + (frame / 2) % 5, bottom - 6, kSoupLight);
+    Put(cx + 3 - (frame / 3) % 6, bottom - 6, kSoupLight);
+    const int stir[8] = {-2, -1, 0, 1, 2, 1, 0, -1};
+    const int sx = cx + stir[(frame / 2) % 8];
+    for (int k = 0; k < 6; ++k) {
+        Put(sx + k / 2, bottom - 7 - k, kWoodDark);
+    }
+}
+
+void Canvas::DrawBomb(int cx, int bottom, int frame, int puddle)
+{
+    for (int dx = -puddle; dx <= puddle; ++dx) {
+        Put(cx + 3 + dx, bottom, ((dx + frame / 3) % 4 == 0) ? kNeon : kNeonDark);
+    }
+    if (puddle > 2) {
+        for (int dx = -puddle + 2; dx <= puddle - 2; ++dx) {
+            Put(cx + 3 + dx, bottom - 1, kNeon, 120);
+        }
+    }
+    Put(cx - 4, bottom - 1, kWoodDark);
+    Put(cx - 3, bottom - 1, kWoodDark);
+    Put(cx + 3, bottom - 1, kWoodDark);
+    Put(cx + 4, bottom - 1, kWoodDark);
+    const int half[8] = {3, 5, 6, 6, 6, 6, 5, 3};
+    const int top = bottom - 9;
+    for (int j = 0; j < 8; ++j) {
+        for (int dx = -half[j]; dx <= half[j]; ++dx) {
+            uint32_t c = j >= 6 ? kBombDark : kBomb;
+            if (j == 1 && dx < 0 && dx > -4) {
+                c = kBombLight;
+            }
+            Put(cx + dx, top + j, c);
+        }
+    }
+    for (int j : {-1, 0, 1, 6, 7, 8}) {
+        Put(cx - 7, top + j, kBombDark);
+        Put(cx - 8, top + j, kBombDark);
+    }
+    for (int j = 2; j <= 5; ++j) {
+        Put(cx - 7, top + j, kBombDark);
+    }
+    const char* tre[5] = {".YYY.", "YKYKY", "YYKYY", "YKKKY", ".YYY."};
+    for (int j = 0; j < 5; ++j) {
+        for (int i = 0; i < 5; ++i) {
+            if (tre[j][i] != '.') {
+                Put(cx + i - 1, top + 1 + j, tre[j][i] == 'K' ? kInk : kHatYellow);
+            }
+        }
+    }
+    const int glow = 60 + 50 * ((frame / 4) % 2);
+    for (int dx = -5; dx <= 5; dx += 2) {
+        Put(cx + dx, top - 1, kNeon, glow);
+    }
+    Put(cx + 3, top + 7, kNeon);
+    Put(cx + 3, top + 8 + (frame / 2) % 2, kNeon);
+}
+
+void Canvas::DrawAltar(int cx, int bottom, int frame, int glow)
+{
+    for (int dx = -6; dx <= 6; ++dx) {
+        Put(cx + dx, bottom - 4, kStoneLight);
+    }
+    for (int y = bottom - 3; y <= bottom; ++y) {
+        for (int dx = -5; dx <= 5; ++dx) {
+            Put(cx + dx, y, (dx + y) % 5 == 0 ? kStoneLight : kStone);
+        }
+    }
+    for (int y = bottom - 3; y <= bottom - 1; ++y) {
+        for (int dx = -2; dx <= 2; ++dx) {
+            Put(cx + dx, y, y == bottom - 1 ? kRobeTrim : kRobe);
+        }
+    }
+    for (int side : {-5, 5}) {
+        for (int y = bottom - 7; y <= bottom - 5; ++y) {
+            Put(cx + side, y, kCandle);
+        }
+        const bool f = ((frame + (side > 0 ? 2 : 0)) / 3) % 2 == 0;
+        Put(cx + side, bottom - 8, kFlameYellow);
+        Put(cx + side + (f ? 0 : 1), bottom - 9, f ? kFlameOrange : kFlameYellow, 200);
+    }
+    const int bobs[4] = {0, 1, 2, 1};
+    const int sy = bottom - 21 + bobs[(frame / 6) % 4];
+    const int a = std::clamp(glow, 0, 255);
+    for (int k = 0; k < 14; ++k) {
+        const double ang = 2.0 * 3.14159265358979 * k / 14.0 + frame * 0.05;
+        const int x = cx + static_cast<int>(std::lround(8.0 * std::cos(ang)));
+        const int y = sy + 2 + static_cast<int>(std::lround(5.0 * std::sin(ang)));
+        Put(x, y, kGold, a / 2);
+    }
+    DrawGlyph('{', cx - 4, sy, kGold, std::max(140, a));
+    DrawGlyph('}', cx + 2, sy, kGold, std::max(140, a));
 }
 
 HICON CreateCrabIcon(int size)

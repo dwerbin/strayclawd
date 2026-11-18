@@ -12,11 +12,12 @@ add_executable(clawdmate WIN32
     src/Mate.cpp
     src/Tray.cpp
     src/Settings.cpp
+    src/ConfigDialog.cpp
 )
 
 target_compile_definitions(clawdmate PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_options(clawdmate PRIVATE /W4 /utf-8 /permissive-)
-target_link_libraries(clawdmate PRIVATE user32 gdi32 dwmapi shell32 advapi32 shcore gdiplus ole32)
+target_link_libraries(clawdmate PRIVATE user32 gdi32 dwmapi shell32 advapi32 shcore gdiplus ole32 comctl32)
 
 add_executable(render_poses EXCLUDE_FROM_ALL tools/render_poses.cpp src/Canvas.cpp)
 target_compile_definitions(render_poses PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)

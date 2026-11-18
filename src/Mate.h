@@ -15,8 +15,14 @@ class Mate {
 public:
     static constexpr const wchar_t* kCrabClass = L"StrayClawdCrab";
     static constexpr const wchar_t* kTrayClass = L"StrayClawdTray";
+    static constexpr const wchar_t* kDuoProp = L"StrayClawdDuo";
     static constexpr UINT kMsgTray = WM_APP + 1;
     static constexpr UINT kMsgShowNow = WM_APP + 2;
+    static constexpr UINT kMsgDuoAsk = WM_APP + 10;
+    static constexpr UINT kMsgDuoAccept = WM_APP + 11;
+    static constexpr UINT kMsgDuoDecline = WM_APP + 12;
+    static constexpr UINT kMsgDuoEnd = WM_APP + 13;
+    static constexpr UINT kMsgReload = WM_APP + 14;
 
     bool Create(HINSTANCE instance);
 
@@ -25,7 +31,8 @@ private:
     enum class Act { Sit, Typing, Walk, Wave, Look, Dance, Sleep, Think, Sneeze, React,
                      Build, Paint, Magic, Cook, Stare, Dizzy,
                      Fish, Read, Juggle, Water, Fitness, Skate, Umbrella, Coffee, Yawn, Chase,
-                     Wizard, GreyWizard, Rocket, Dust, Sweep, Yoga };
+                     Wizard, GreyWizard, Rocket, Dust, Sweep, Yoga, Duo };
+    enum class Duo { Look, Wave, Talk, Juggle, Cook, Rocket, Bomb, Toast, Scheme, Saber, Boost, Dance, Pray };
     enum class Surface { None, Window, Ground };
     enum class ZMode { Free, Above, Behind };
 
@@ -96,6 +103,22 @@ private:
     void StepYawn(double dt);
     void StepChase(double dt);
     void ApplySeason(double dt);
+    static bool IsCrab(HWND hwnd);
+    bool PeerFoot(HWND peer, double* x, double* y) const;
+    HWND FindPeer(double maxDx, double* x, double* y) const;
+    bool FindBoostTarget(double x, double footY, double* top);
+    bool TryDuo(int forced);
+    bool CanJoinDuo(bool forced) const;
+    void OnDuoAsk(HWND from, WPARAM wp);
+    void OnDuoAccept(HWND from, int kind);
+    void OnDuoDecline(HWND from);
+    void OnDuoEnd(HWND from);
+    void BeginDuo(Duo kind, bool lead, HWND peer, int meet, int side, double approach);
+    void StepDuo(double dt);
+    void StepDuoKind(double u, double dt);
+    void RenderDuo(int ox, int oy, bool front);
+    int MidX() const;
+    void BroadcastReload();
     void CheckTyping();
     void UpdateKeyboardHook();
     static LRESULT CALLBACK KeyboardProc(int code, WPARAM wp, LPARAM lp);
@@ -234,4 +257,31 @@ private:
     double spinAcc_ = 0.0;
     double spinIdle_ = 0.0;
     double lastAngle_ = 0.0;
+
+    HWND peer_ = nullptr;
+    Duo duo_ = Duo::Look;
+    bool duoLead_ = false;
+    int duoSide_ = 1;
+    double duoFrom_ = 0.0;
+    double duoTo_ = 0.0;
+    double duoApproach_ = 1.0;
+    double duoLive_ = 0.0;
+    double duoLost_ = 0.0;
+    double duoCooldown_ = 8.0;
+    bool duoDetached_ = false;
+    double boostTop_ = 0.0;
+    HWND askPeer_ = nullptr;
+    double askT_ = 0.0;
+    int askDuo_ = 0;
+    int askMeet_ = 0;
+    int askSide_ = 1;
+    int askApproach_ = 10;
+    bool askForced_ = false;
+    const char* speech_ = nullptr;
+    int speechChars_ = 1000;
+    int duoProp_ = 0;
+    int duoLevel_ = 0;
+    int duoFlame_ = 0;
+    int signDrop_ = -1;
+    bool duoBalls_ = false;
 };

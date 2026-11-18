@@ -36,7 +36,7 @@ BOOL CALLBACK Scanner::EnumProc(HWND hwnd, LPARAM param)
     }
     wchar_t cls[64] = {};
     GetClassNameW(hwnd, cls, 64);
-    if (std::wcscmp(cls, L"Progman") == 0 || std::wcscmp(cls, L"WorkerW") == 0) {
+    if (std::wcscmp(cls, L"Progman") == 0 || std::wcscmp(cls, L"WorkerW") == 0 || std::wcscmp(cls, L"StrayClawdCrab") == 0) {
         return TRUE;
     }
     const bool taskbar = std::wcscmp(cls, L"Shell_TrayWnd") == 0 || std::wcscmp(cls, L"Shell_SecondaryTrayWnd") == 0;

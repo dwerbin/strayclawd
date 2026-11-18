@@ -54,6 +54,12 @@ void Tray::ShowMenu(HWND owner, const Settings& settings, bool crabVisible) cons
     AppendMenuW(play, MF_STRING, kCmdPlayDust, L"Dusting");
     AppendMenuW(play, MF_STRING, kCmdPlaySweep, L"Sweeping");
     AppendMenuW(play, MF_STRING, kCmdPlayYoga, L"Yoga");
+    HMENU duo = CreatePopupMenu();
+    for (int k = 0; k < kDuoCount; ++k) {
+        AppendMenuW(duo, MF_STRING, kCmdPlayDuo + k, kAnims[kAnimFirstDuo + k].label);
+    }
+    AppendMenuW(play, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(play, MF_POPUP, reinterpret_cast<UINT_PTR>(duo), L"With another crab");
 
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING, kCmdShow, L"Show now");
@@ -69,6 +75,7 @@ void Tray::ShowMenu(HWND owner, const Settings& settings, bool crabVisible) cons
     const bool partyToday = settings.partyDate == static_cast<unsigned long>(now.wMonth * 100 + now.wDay);
     AppendMenuW(menu, MF_STRING | (partyToday ? MF_CHECKED : 0u), kCmdPartyToday, L"Today is a party day");
     AppendMenuW(menu, MF_STRING | (IsAutostart() ? MF_CHECKED : 0u), kCmdAutostart, L"Start with Windows");
+    AppendMenuW(menu, MF_STRING, kCmdConfigure, L"Configure...");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kCmdQuit, L"Quit");
 

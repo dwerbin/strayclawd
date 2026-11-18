@@ -546,6 +546,154 @@ std::vector<Scene> Scenes()
             }
         };
     }
+    {
+        Scene& sc = add("duo_talk");
+        sc.dx = -13;
+        sc.pose.lookX = 1;
+        sc.pose.mouth = true;
+        sc.pose.right = Claw::Up;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            c.DrawCrab(other, ox + 26, oy);
+            c.DrawSpeech(ox + 8, oy - 1, "...", 3);
+        };
+    }
+    {
+        Scene& sc = add("duo_toast");
+        sc.dx = -14;
+        sc.pose.lookX = 1;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.tool = Tool::Mug;
+        sc.pose.right = Claw::High;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.eyes = Eyes::Happy;
+            other.tool = Tool::Mug;
+            other.toolSide = -1;
+            other.left = Claw::High;
+            c.DrawCrab(other, ox + 28, oy);
+            c.DrawGlyph('*', ox + 21, oy - 5, kBang, 255);
+            c.DrawGlyph('p', ox + 18, oy - 4, kWhite, 230);
+            c.DrawGlyph('p', ox + 26, oy - 5, kWhite, 230);
+        };
+    }
+    {
+        Scene& sc = add("duo_cook");
+        sc.dx = -17;
+        sc.pose.hat = Hat::Toque;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = 1;
+        sc.pose.right = Claw::Up;
+        sc.back = [](Canvas& c, int ox, int) { c.DrawPot(ox + 25, kFeetRow - 1, 5); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.hat = Hat::Toque;
+            other.lookX = -1;
+            other.lookY = 1;
+            other.left = Claw::High;
+            c.DrawCrab(other, ox + 34, oy);
+            c.DrawGlyph('c', ox + 30, oy - 3, kCarrot, 255);
+            c.DrawGlyph('~', ox + 24, oy - 2, kSteam, 160);
+        };
+    }
+    {
+        Scene& sc = add("duo_rocket");
+        sc.dx = -18;
+        sc.pose.hat = Hat::HardHat;
+        sc.pose.lookX = 1;
+        sc.pose.tool = Tool::Hammer;
+        sc.pose.right = Claw::High;
+        sc.back = [](Canvas& c, int ox, int) { c.DrawBigRocket(ox + 26, kFeetRow - 1, 5, 0); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.hat = Hat::HardHat;
+            other.lookX = -1;
+            other.tool = Tool::Hammer;
+            other.toolSide = -1;
+            other.left = Claw::Up;
+            c.DrawCrab(other, ox + 36, oy);
+            c.DrawGlyph('*', ox + 18, oy - 6, kBang, 255);
+        };
+    }
+    {
+        Scene& sc = add("duo_bomb");
+        sc.dx = -17;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = 1;
+        sc.pose.eyes = Eyes::Surprised;
+        sc.pose.tool = Tool::Hammer;
+        sc.pose.right = Claw::High;
+        sc.back = [](Canvas& c, int ox, int) { c.DrawBomb(ox + 25, kFeetRow - 1, 4, 6); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.eyes = Eyes::Happy;
+            other.tool = Tool::Mug;
+            other.toolSide = 1;
+            c.DrawCrab(other, ox + 34, oy);
+            c.DrawGlyph('d', ox + 1, oy - 3, kDrop, 255);
+            c.DrawSpeech(ox + 42, oy - 1, "THIS IS FINE.", 99);
+        };
+    }
+    {
+        Scene& sc = add("duo_saber");
+        sc.dx = -14;
+        sc.pose.lookX = 1;
+        sc.pose.tool = Tool::Saber;
+        sc.pose.saberColor = 0x4FC3E8;
+        sc.pose.saberLen = 8;
+        sc.pose.saberAngle = 1;
+        sc.pose.right = Claw::Up;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.tool = Tool::Saber;
+            other.toolSide = -1;
+            other.saberColor = 0xFF4A4A;
+            other.saberLen = 8;
+            other.saberAngle = 1;
+            other.left = Claw::Up;
+            c.DrawCrab(other, ox + 28, oy);
+            c.DrawGlyph('*', ox + 21, oy - 10, kBang, 255);
+        };
+    }
+    {
+        Scene& sc = add("duo_boost");
+        sc.pose.eyes = Eyes::Closed;
+        sc.pose.left = Claw::High;
+        sc.pose.right = Claw::High;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.eyes = Eyes::Happy;
+            other.lookY = -1;
+            other.left = Claw::High;
+            other.right = Claw::Up;
+            c.DrawCrab(other, ox, oy - 10);
+            c.DrawGlyph('d', ox + 16, oy + 1, kDrop, 255);
+            c.DrawGlyph('!', ox + 7, oy - 18, kBang, 255);
+        };
+    }
+    {
+        Scene& sc = add("duo_pray");
+        sc.dx = -17;
+        sc.pose.robe = true;
+        sc.pose.eyes = Eyes::Closed;
+        sc.pose.lookX = 1;
+        sc.pose.left = Claw::High;
+        sc.pose.right = Claw::High;
+        sc.back = [](Canvas& c, int ox, int) { c.DrawAltar(ox + 25, kFeetRow - 1, 10, 220); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.robe = true;
+            other.eyes = Eyes::Closed;
+            other.lookX = -1;
+            other.left = Claw::High;
+            other.right = Claw::High;
+            c.DrawCrab(other, ox + 34, oy);
+            c.DrawGlyph('n', ox + 28, oy - 18, 0xB98CFF, 230);
+        };
+    }
     return s;
 }
 

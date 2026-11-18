@@ -4,12 +4,12 @@
 #include <cstdint>
 #include <vector>
 
-enum class Eyes { Open, Closed, Happy, Surprised, Dizzy };
+enum class Eyes { Open, Closed, Happy, Surprised, Dizzy, Sly };
 enum class Claw { High, Up, Mid, Down };
 enum class Legs { Stand, LiftLeft, LiftRight, Spread };
 enum class Body { Normal, Crouch, Squash };
 enum class Hat { None, HardHat, Beret, TopHat, Toque, Nightcap, Santa, Witch, Party, Wizard, Headband };
-enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff, Duster, Broom };
+enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff, Duster, Broom, Saber };
 
 constexpr int kNoBarbell = -99;
 
@@ -43,6 +43,10 @@ struct Pose {
     bool broom = false;
     bool woodWand = false;
     int glow = 0;
+    bool robe = false;
+    uint32_t saberColor = 0;
+    int saberLen = 0;
+    int saberAngle = 0;
 };
 
 constexpr int kCrabW = 16;
@@ -64,6 +68,14 @@ public:
     void DrawRainbow(int cx, int cy, int alpha);
     void DrawRocket(int x, int y, int level, int flame);
     void DrawLine(int x0, int y0, int x1, int y1, uint32_t rgb, int alpha = 255);
+    void DrawSign(int cx, int bottom);
+    void DrawBigRocket(int cx, int bottom, int level, int flame);
+    void DrawPot(int cx, int bottom, int frame);
+    void DrawBomb(int cx, int bottom, int frame, int puddle);
+    void DrawAltar(int cx, int bottom, int frame, int glow);
+    void DrawSpeech(int cx, int bottom, const char* text, int visible);
+    void DrawText(const char* text, int x, int y, uint32_t rgb, int visible = 1000);
+    static int TextWidth(const char* text);
     int PixelWidth() const { return lw_ * scale_; }
     int PixelHeight() const { return lh_ * scale_; }
     const uint32_t* Data() const { return px_.data(); }
