@@ -4,12 +4,12 @@
 #include <cstdint>
 #include <vector>
 
-enum class Eyes { Open, Closed, Happy, Surprised, Dizzy, Sly };
+enum class Eyes { Open, Closed, Happy, Surprised, Dizzy, Sly, None };
 enum class Claw { High, Up, Mid, Down };
 enum class Legs { Stand, LiftLeft, LiftRight, Spread };
 enum class Body { Normal, Crouch, Squash };
 enum class Hat { None, HardHat, Beret, TopHat, Toque, Nightcap, Santa, Witch, Party, Wizard, Headband };
-enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff, Duster, Broom, Saber };
+enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff, Duster, Broom, Saber, Wrench };
 
 constexpr int kNoBarbell = -99;
 
@@ -76,6 +76,7 @@ public:
     void DrawAltar(int cx, int bottom, int frame, int glow);
     void DrawSpeech(int cx, int bottom, const char* text, int visible);
     void DrawText(const char* text, int x, int y, uint32_t rgb, int visible = 1000);
+    void DrawBigText(const char* text, int cx, int y, uint32_t fill, uint32_t outline, int alpha = 255);
     static int TextWidth(const char* text);
     int PixelWidth() const { return lw_ * scale_; }
     int PixelHeight() const { return lh_ * scale_; }

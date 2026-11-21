@@ -2328,6 +2328,7 @@ void Mate::StepRocket(double dt)
     }
     rocketRide_ = true;
     pose_.lookX = 0;
+    pose_.eyes = Eyes::None;
     pose_.left = Claw::High;
     pose_.right = Claw::High;
     if (phase_ < 3) {
@@ -2356,12 +2357,10 @@ void Mate::StepRocket(double dt)
               flying ? Rnd(30.0, 50.0) : Rnd(-6.0, -2.0), 0.7, kSmoke, 0.0, 0.8);
     }
     if (!flying) {
-        pose_.eyes = Eyes::Surprised;
         shake_ = (static_cast<int>(t / 0.04) % 2) ? 1 : -1;
         return;
     }
     const double ft = t - 7.0;
-    pose_.eyes = Eyes::Happy;
     pose_.lookY = -1;
     flyY_ = 0.5 * 500.0 * ft * ft * s;
     const double windowBottom = edge_ - flyY_ + (kCanvasH - kFeetRow) * s;
@@ -3815,7 +3814,7 @@ void Mate::StepDuoKind(double u, double dt)
         }
         if (u < 6.5) {
             if (lead || u < 2.5) {
-                pose_.tool = Tool::Hammer;
+                pose_.tool = Tool::Wrench;
                 pose_.toolSide = d;
                 pose_.lookY = 1;
                 const int k = static_cast<int>((u + (lead ? 0.0 : 0.15)) / 0.3);

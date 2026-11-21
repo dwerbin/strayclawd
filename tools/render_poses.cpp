@@ -501,7 +501,7 @@ std::vector<Scene> Scenes()
         Scene& sc = add("rocket_launch");
         sc.pose.left = Claw::High;
         sc.pose.right = Claw::High;
-        sc.pose.eyes = Eyes::Happy;
+        sc.pose.eyes = Eyes::None;
         sc.pose.lookY = -1;
         sc.dy = -14;
         sc.back = [](Canvas& c, int ox, int oy) { c.DrawRocket(ox + 1, oy - 10, 4, 1); };
@@ -631,7 +631,7 @@ std::vector<Scene> Scenes()
         sc.pose.lookX = 1;
         sc.pose.lookY = 1;
         sc.pose.eyes = Eyes::Surprised;
-        sc.pose.tool = Tool::Hammer;
+        sc.pose.tool = Tool::Wrench;
         sc.pose.right = Claw::High;
         sc.back = [](Canvas& c, int ox, int oy) { c.DrawBomb(ox + 32, oy + kCrabH - 1, 4, 6); };
         sc.front = [](Canvas& c, int ox, int oy) {
@@ -708,7 +708,7 @@ std::vector<Scene> Scenes()
         sc.padTop = 14;
         sc.dx = -28;
         sc.noCrab = true;
-        sc.back = [](Canvas& c, int ox, int oy) { c.DrawExplosion(ox + 35, oy + kCrabH - 1, 1.0); };
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawExplosion(ox + 35, oy + kCrabH - 1, 0.6); };
         sc.front = [](Canvas& c, int ox, int oy) {
             c.DrawGlyph('*', ox + 4, oy - 10, kBang, 220);
             c.DrawGlyph('p', ox + 64, oy - 14, kWhite, 200);
@@ -1015,7 +1015,7 @@ std::vector<Clip> Clips()
         p.left = Claw::High;
         p.right = Claw::High;
         p.lookY = -1;
-        p.eyes = t < 0.9 ? Eyes::Open : (t < 1.3 ? Eyes::Surprised : Eyes::Happy);
+        p.eyes = Eyes::None;
         c.DrawCrab(p, kCrabX + shake, oy);
         for (int n = 0; n < 3; ++n) {
             Particle(c, static_cast<char>('3' - n), kCrabX + 6, kCrabY - 18, 0.0, -4.0, 0.0, 0.3, t - 0.3 * n, kWhite);

@@ -7,7 +7,7 @@
 StrayClawd is a free desktop pet (a screen mate, or virtual pet) for Windows 10 and 11, in
 the spirit of the old [Screen Mate Poo](https://github.com/lwu309/Scmpoo), eSheep and
 Shimeji: the small orange pixel crab of Claude appears at random from behind one of your
-windows, sits on its title bar, types on a tiny keyboard and does small cute things, then
+windows, sits on its title bar, codes on a tiny laptop and does small cute things, then
 hides again.
 
 <p align="center">
@@ -80,7 +80,7 @@ Settings are stored in `HKCU\Software\StrayClawd` (the animations in its `Animat
 
 - Peeks from behind the top edge of a window (or from behind its left/right side), looks
   around, sometimes gets shy and goes back, otherwise climbs out with a hop.
-- Then 4 to 8 activities: typing on a keyboard (code glyphs pop up), walking along the edge,
+- Then 4 to 8 activities: coding on a laptop (code glyphs pop up), walking along the edge,
   waving at the mouse, following the mouse with its eyes, dancing, sleeping (wakes up when
   the mouse comes close), thinking, sneezing.
 - Short special animations, picked at random among the activities:
@@ -106,8 +106,8 @@ Settings are stored in `HKCU\Software\StrayClawd` (the animations in its `Animat
     under his feet and falls in a panic, cartoon style.
   - Rain: he opens an umbrella; the drops splash on it and run off its edges, so he stays
     dry. Then a rainbow appears.
-  - Rocket: he builds a small rocket next to him with a hammer, jumps on it, counts down
-    3, 2, 1, and takes off; he leaves the screen by the top and comes back later.
+  - Rocket: he builds a small rocket next to him with a hammer, jumps on it (seen from the
+    back, so no eyes), counts down 3, 2, 1, and takes off; he leaves the screen by the top and comes back later.
   - Dusting: a feather duster, on one side then the other; the dust makes him sneeze.
   - Sweeping: he walks along the edge with a broom and pushes a growing pile of dust, then
     sweeps it over the edge and wipes his brow.
@@ -152,9 +152,9 @@ walk to each other, then:
   plants a "/!\" danger sign, both hammer, the rocket grows stage by stage, countdown, and
   both fly away holding on to it.
 - Fix a huge leaking atomic bomb: a puddle of neon green liquid grows on the ground; one
-  crab hammers and sweats, the other sips from a mug and says "THIS IS FINE.". Then the
-  bomb rattles, and explodes: flash, fireball, shockwave, mushroom cloud. Both crabs are
-  gone.
+  crab tinkers with a wrench and sweats, the other sips from a mug and says "THIS IS
+  FINE.". Then the bomb rattles and explodes like in a comic: flash, spiky starburst with a
+  big "BOOM!", then round puffs of smoke that shrink away. Both crabs are gone.
 - Toast with their mugs.
 - Scheme: sly eyes, whispers, claws rubbed together, then they look at you.
 - Light saber duel: blue against red, with sparks when the blades cross.
@@ -189,7 +189,7 @@ Pure Win32 + GDI, C++20, no external library.
 <table>
   <tr>
     <td align="center"><img src="art/poses/peek.png" alt="Peek" width="168"><br>Peek</td>
-    <td align="center"><img src="art/poses/typing.png" alt="Typing" width="168"><br>Typing</td>
+    <td align="center"><img src="art/poses/typing.png" alt="Coding on a laptop" width="168"><br>Coding</td>
     <td align="center"><img src="art/poses/wave.png" alt="Wave" width="168"><br>Wave</td>
     <td align="center"><img src="art/poses/dance.png" alt="Dance" width="168"><br>Dance</td>
   </tr>
@@ -257,7 +257,7 @@ Pure Win32 + GDI, C++20, no external library.
     <td align="center" colspan="2"><img src="art/poses/duo_bomb.png" alt="Two crabs and a big leaking bomb: this is fine" width="252"><br>Duo: this is fine</td>
   </tr>
   <tr>
-    <td align="center" colspan="4"><img src="art/poses/duo_boom.png" alt="The bomb explodes in a mushroom cloud" width="252"><br>Duo: this was not fine</td>
+    <td align="center" colspan="4"><img src="art/poses/duo_boom.png" alt="The bomb explodes: a comic BOOM" width="252"><br>Duo: this was not fine</td>
   </tr>
 </table>
 
