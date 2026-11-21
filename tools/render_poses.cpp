@@ -62,6 +62,9 @@ struct Scene {
     std::function<void(Canvas&, int, int)> front;
     bool peek = false;
     int edgeX = kW;
+    int padX = 0;
+    int padTop = 0;
+    bool noCrab = false;
 };
 
 void Stars(Canvas& c, int ox, int oy, bool hat)
@@ -600,40 +603,45 @@ std::vector<Scene> Scenes()
     }
     {
         Scene& sc = add("duo_rocket");
-        sc.dx = -18;
+        sc.padX = 6;
+        sc.padTop = 17;
+        sc.dx = -17;
         sc.pose.hat = Hat::HardHat;
         sc.pose.lookX = 1;
         sc.pose.tool = Tool::Hammer;
         sc.pose.right = Claw::High;
-        sc.back = [](Canvas& c, int ox, int) { c.DrawBigRocket(ox + 26, kFeetRow - 1, 5, 0); };
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawBigRocket(ox + 27, oy + kCrabH - 1, 5, 0); };
         sc.front = [](Canvas& c, int ox, int oy) {
             Pose other;
             other.hat = Hat::HardHat;
             other.lookX = -1;
+            other.lookY = -1;
             other.tool = Tool::Hammer;
             other.toolSide = -1;
             other.left = Claw::Up;
-            c.DrawCrab(other, ox + 36, oy);
+            c.DrawCrab(other, ox + 38, oy);
             c.DrawGlyph('*', ox + 18, oy - 6, kBang, 255);
+            c.DrawSign(ox - 5, oy + kCrabH - 1);
         };
     }
     {
         Scene& sc = add("duo_bomb");
-        sc.dx = -17;
+        sc.padX = 14;
+        sc.dx = -28;
         sc.pose.lookX = 1;
         sc.pose.lookY = 1;
         sc.pose.eyes = Eyes::Surprised;
         sc.pose.tool = Tool::Hammer;
         sc.pose.right = Claw::High;
-        sc.back = [](Canvas& c, int ox, int) { c.DrawBomb(ox + 25, kFeetRow - 1, 4, 6); };
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawBomb(ox + 32, oy + kCrabH - 1, 4, 6); };
         sc.front = [](Canvas& c, int ox, int oy) {
             Pose other;
             other.eyes = Eyes::Happy;
             other.tool = Tool::Mug;
             other.toolSide = 1;
-            c.DrawCrab(other, ox + 34, oy);
+            c.DrawCrab(other, ox + 54, oy);
             c.DrawGlyph('d', ox + 1, oy - 3, kDrop, 255);
-            c.DrawSpeech(ox + 42, oy - 1, "THIS IS FINE.", 99);
+            c.DrawSpeech(ox + 62, oy - 17, "THIS IS FINE.", 99);
         };
     }
     {
@@ -694,12 +702,54 @@ std::vector<Scene> Scenes()
             c.DrawGlyph('n', ox + 28, oy - 18, 0xB98CFF, 230);
         };
     }
+    {
+        Scene& sc = add("duo_boom");
+        sc.padX = 14;
+        sc.padTop = 14;
+        sc.dx = -28;
+        sc.noCrab = true;
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawExplosion(ox + 35, oy + kCrabH - 1, 1.0); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            c.DrawGlyph('*', ox + 4, oy - 10, kBang, 220);
+            c.DrawGlyph('p', ox + 64, oy - 14, kWhite, 200);
+            c.DrawGlyph('*', ox + 70, oy - 2, kBang, 180);
+            c.DrawGlyph('p', ox + 1, oy + 2, 0x39FF14, 200);
+        };
+    }
+    {
+        Scene& sc = add("duo_highfive");
+        sc.dx = -8;
+        sc.dy = -12;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = -1;
+        sc.pose.legs = Legs::Spread;
+        sc.pose.right = Claw::High;
+        sc.pose.left = Claw::Mid;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.eyes = Eyes::Happy;
+            other.lookX = -1;
+            other.lookY = -1;
+            other.legs = Legs::Spread;
+            other.left = Claw::High;
+            other.right = Claw::Mid;
+            c.DrawCrab(other, ox + 16, oy);
+            c.DrawGlyph('*', ox + 15, oy - 6, kBang, 255);
+            c.DrawGlyph('s', ox + 8, oy - 4, kBang, 230);
+            c.DrawGlyph('s', ox + 22, oy - 4, kBang, 230);
+            c.DrawGlyph('p', ox + 11, oy - 8, kWhite, 220);
+            c.DrawGlyph('p', ox + 20, oy - 8, kWhite, 220);
+            c.DrawGlyph('*', ox + 4, kFeetRow - 3, kWhite, 160);
+            c.DrawGlyph('*', ox + 26, kFeetRow - 3, kWhite, 160);
+        };
+    }
     return s;
 }
 
-void FillRows(std::vector<uint32_t>& img, int y0, int y1, uint32_t rgb, int x1 = kW)
+void FillRows(std::vector<uint32_t>& img, int y0, int y1, uint32_t rgb, int x1 = kW, int width = kW)
 {
-    const int w = kW * gScale;
+    const int w = width * gScale;
     for (int y = y0 * gScale; y < y1 * gScale; ++y) {
         for (int x = 0; x < x1 * gScale; ++x) {
             img[static_cast<size_t>(y) * w + x] = 0xFF000000 | rgb;
@@ -707,17 +757,17 @@ void FillRows(std::vector<uint32_t>& img, int y0, int y1, uint32_t rgb, int x1 =
     }
 }
 
-void Background(std::vector<uint32_t>& img, int edgeX)
+void Background(std::vector<uint32_t>& img, int edgeX, int width = kW, int height = kH, int feet = kFeetRow)
 {
-    FillRows(img, 0, kH, kDesk);
-    FillRows(img, kFeetRow, kFeetRow + 1, kTitleEdge, edgeX);
-    FillRows(img, kFeetRow + 1, kFeetRow + 5, kTitleBar, edgeX);
-    FillRows(img, kFeetRow + 5, kH, kWindow, edgeX);
+    FillRows(img, 0, height, kDesk, width, width);
+    FillRows(img, feet, feet + 1, kTitleEdge, edgeX, width);
+    FillRows(img, feet + 1, feet + 5, kTitleBar, edgeX, width);
+    FillRows(img, feet + 5, height, kWindow, edgeX, width);
 }
 
-void Over(std::vector<uint32_t>& img, const uint32_t* src, int fromRow, int toRow)
+void Over(std::vector<uint32_t>& img, const uint32_t* src, int fromRow, int toRow, int width = kW)
 {
-    const int w = kW * gScale;
+    const int w = width * gScale;
     for (int y = fromRow * gScale; y < toRow * gScale; ++y) {
         for (int x = 0; x < w; ++x) {
             const size_t i = static_cast<size_t>(y) * w + x;
@@ -1043,26 +1093,31 @@ int wmain(int argc, wchar_t** argv)
         std::fwprintf(stderr, L"PNG encoder not found\n");
         return 1;
     }
-    const int w = kW * gScale;
-    const int h = kH * gScale;
     int failed = 0;
     for (const Scene& sc : Scenes()) {
+        const int lw = kW + 2 * sc.padX;
+        const int lh = kH + sc.padTop;
+        const int w = lw * gScale;
+        const int h = lh * gScale;
+        const int feet = kFeetRow + sc.padTop;
         Canvas c;
-        c.Resize(kW, kH, gScale);
-        const int ox = kCrabX + sc.dx;
-        const int oy = kCrabY + sc.dy;
+        c.Resize(lw, lh, gScale);
+        const int ox = kCrabX + sc.padX + sc.dx;
+        const int oy = kCrabY + sc.padTop + sc.dy;
         if (sc.back) {
             sc.back(c, ox, oy);
         }
-        c.DrawCrab(sc.pose, ox, oy);
+        if (!sc.noCrab) {
+            c.DrawCrab(sc.pose, ox, oy);
+        }
         if (sc.front) {
             sc.front(c, ox, oy);
         }
         std::vector<uint32_t> img(static_cast<size_t>(w) * h);
-        Background(img, sc.edgeX);
-        Over(img, c.Data(), 0, sc.peek ? kFeetRow : kH);
+        Background(img, sc.edgeX == kW ? lw : sc.edgeX, lw, lh, feet);
+        Over(img, c.Data(), 0, sc.peek ? feet : lh, lw);
 
-        Gdiplus::Bitmap bmp(w, (kBottom - kTop) * gScale, w * 4, PixelFormat32bppARGB,
+        Gdiplus::Bitmap bmp(w, (kBottom - kTop + sc.padTop) * gScale, w * 4, PixelFormat32bppARGB,
                             reinterpret_cast<BYTE*>(img.data() + static_cast<size_t>(kTop) * gScale * w));
         const std::string name(sc.name);
         const std::wstring path = outDir + L"\\" + std::wstring(name.begin(), name.end()) + L".png";

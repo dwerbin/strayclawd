@@ -32,7 +32,7 @@ private:
                      Build, Paint, Magic, Cook, Stare, Dizzy,
                      Fish, Read, Juggle, Water, Fitness, Skate, Umbrella, Coffee, Yawn, Chase,
                      Wizard, GreyWizard, Rocket, Dust, Sweep, Yoga, Duo };
-    enum class Duo { Look, Wave, Talk, Juggle, Cook, Rocket, Bomb, Toast, Scheme, Saber, Boost, Dance, Pray };
+    enum class Duo { Look, Wave, Talk, Juggle, Cook, Rocket, Bomb, Toast, Scheme, Saber, Boost, Dance, Pray, HighFive };
     enum class Surface { None, Window, Ground };
     enum class ZMode { Free, Above, Behind };
 
@@ -117,6 +117,8 @@ private:
     void StepDuo(double dt);
     void StepDuoKind(double u, double dt);
     void RenderDuo(int ox, int oy, bool front);
+    void RenderProp(POINT crabOrigin);
+    void HideProp();
     int MidX() const;
     void BroadcastReload();
     void CheckTyping();
@@ -283,5 +285,17 @@ private:
     int duoLevel_ = 0;
     int duoFlame_ = 0;
     int signDrop_ = -1;
+    int duoCount_ = 0;
     bool duoBalls_ = false;
+    bool duoGone_ = false;
+    double duoBoom_ = 0.0;
+
+    HWND prop_ = nullptr;
+    HDC propDc_ = nullptr;
+    HBITMAP propDib_ = nullptr;
+    HGDIOBJ propOldBmp_ = nullptr;
+    void* propBits_ = nullptr;
+    int propScale_ = 0;
+    bool propShown_ = false;
+    Canvas propCanvas_;
 };

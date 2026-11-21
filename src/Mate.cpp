@@ -105,6 +105,8 @@ bool Mate::Create(HINSTANCE instance)
     trayWnd_ = CreateWindowExW(0, kTrayClass, L"StrayClawd", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, instance, this);
     crab_ = CreateWindowExW(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, kCrabClass, L"StrayClawd", WS_POPUP,
                             0, 0, 1, 1, nullptr, nullptr, instance, this);
+    prop_ = CreateWindowExW(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT, kCrabClass,
+                            L"StrayClawd", WS_POPUP, 0, 0, 1, 1, nullptr, nullptr, instance, nullptr);
     if (!trayWnd_ || !crab_) {
         return false;
     }
@@ -459,11 +461,21 @@ void Mate::Shutdown()
     RemovePropW(crab_, kDuoProp);
     DestroyWindow(crab_);
     crab_ = nullptr;
+    if (prop_) {
+        DestroyWindow(prop_);
+        prop_ = nullptr;
+    }
     if (memDc_) {
         SelectObject(memDc_, oldBmp_);
         DeleteObject(dib_);
         DeleteDC(memDc_);
         memDc_ = nullptr;
+    }
+    if (propDc_) {
+        SelectObject(propDc_, propOldBmp_);
+        DeleteObject(propDib_);
+        DeleteDC(propDc_);
+        propDc_ = nullptr;
     }
     if (icon_) {
         DestroyIcon(icon_);
@@ -618,6 +630,7 @@ void Mate::Show()
 void Mate::Hide(double delay)
 {
     ShowWindow(crab_, SW_HIDE);
+    HideProp();
     if (mouseDown_) {
         mouseDown_ = false;
         dragging_ = false;
@@ -1236,7 +1249,9 @@ void Mate::Tick(double dt)
     duoLevel_ = 0;
     duoFlame_ = 0;
     signDrop_ = -1;
+    duoCount_ = 0;
     duoBalls_ = false;
+    duoGone_ = false;
     keyRate_ *= std::exp(-dt);
     if (state_ == State::Active) {
         CheckTyping();
@@ -3130,8 +3145,10 @@ void Mate::Render()
         canvas_.DrawParachute(ox + 8, oy - 14, 2);
     }
     RenderDuo(ox, oy, false);
-    canvas_.DrawCrab(pose_, ox, oy);
-    RenderDuo(ox, oy, true);
+    if (!duoGone_) {
+        canvas_.DrawCrab(pose_, ox, oy);
+        RenderDuo(ox, oy, true);
+    }
     if (chuteFold_ == 0 || chuteFold_ == 1) {
         canvas_.DrawParachute(ox + 8, oy - 14, chuteFold_);
     }
@@ -3179,11 +3196,16 @@ void Mate::Render()
               static_cast<LONG>(std::lround(footY_)) - kFeetRow * scale_};
     BLENDFUNCTION bf{AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
     UpdateLayeredWindow(crab_, nullptr, &dst, &size, memDc_, &src, 0, &bf, ULW_ALPHA);
+    RenderProp(dst);
 }
 
 namespace {
 
 constexpr double kWalkSpeed = 30.0;
+constexpr int kPropW = 80;
+constexpr int kPropH = 74;
+constexpr int kPropCX = 40;
+constexpr int kPropBottom = 64;
 constexpr uint32_t kNeon = 0x39FF14;
 constexpr uint32_t kChant = 0xB98CFF;
 constexpr uint32_t kSaberBlue = 0x4FC3E8;
@@ -3195,13 +3217,13 @@ static_assert(sizeof(WPARAM) >= 8, "the duo request packs the meeting point in t
 
 double DuoGap(int kind)
 {
-    static const double kGaps[kDuoCount] = {26, 30, 26, 30, 34, 36, 34, 28, 20, 34, 18, 28, 34};
+    static const double kGaps[kDuoCount] = {26, 30, 26, 30, 34, 38, 54, 28, 20, 34, 18, 28, 34, 24};
     return kGaps[kind];
 }
 
 double DuoLength(int kind)
 {
-    static const double kLengths[kDuoCount] = {4.0, 3.0, 7.2, 7.0, 8.0, 30.0, 10.0, 5.0, 7.0, 8.0, 4.5, 7.2, 9.0};
+    static const double kLengths[kDuoCount] = {4.0, 3.0, 7.2, 7.0, 8.0, 30.0, 12.6, 5.0, 7.0, 8.0, 4.5, 7.2, 9.0, 3.6};
     return kLengths[kind];
 }
 
@@ -3675,7 +3697,7 @@ void Mate::StepDuoKind(double u, double dt)
                 duoLevel_ = level;
                 if (actFlag_ != level) {
                     actFlag_ = level;
-                    Puff(mid, kFeetRow - 6 * level, 3, kWhite);
+                    Puff(mid, std::max(4, kFeetRow - 10 * level), 4, kWhite);
                 }
             }
             pose_.tool = Tool::Hammer;
@@ -3716,9 +3738,8 @@ void Mate::StepDuoKind(double u, double dt)
             }
             if (lead && u >= 9.0) {
                 const int n = 3 - static_cast<int>((u - 9.0) / 0.5);
-                if (n >= 1 && counter_ != 100 + n) {
-                    counter_ = 100 + n;
-                    Spawn(static_cast<char>('0' + n), mid - 1, kFeetRow - 41, 0.0, -4.0, 0.5, kWhite);
+                if (n >= 1) {
+                    duoCount_ = n;
                 }
             }
             break;
@@ -3733,7 +3754,7 @@ void Mate::StepDuoKind(double u, double dt)
             timerA_ -= dt;
             if (timerA_ <= 0.0) {
                 timerA_ = 0.05;
-                Spawn(Rnd() < 0.5 ? 'p' : 't', mid + RndI(-4, 4), kFeetRow + 4, Rnd(-16.0, 16.0),
+                Spawn(Rnd() < 0.5 ? 'p' : 't', mid + RndI(-7, 7), kFeetRow + 4, Rnd(-16.0, 16.0),
                       u >= 11.0 ? Rnd(30.0, 50.0) : Rnd(-6.0, -2.0), 0.7, kSmoke, 0.0, 0.8);
             }
         }
@@ -3754,22 +3775,42 @@ void Mate::StepDuoKind(double u, double dt)
     }
 
     case Duo::Bomb:
-        if (lead) {
-            if (u < 9.6) {
-                duoProp_ = 2;
-                duoLevel_ = std::min(9, static_cast<int>(u / 0.8));
-                timerA_ -= dt;
-                if (timerA_ <= 0.0) {
-                    timerA_ = 0.45;
-                    Spawn('p', mid + RndI(-4, 6), kFeetRow - 11, Rnd(-2.0, 2.0), -6.0, 1.0, kNeon, 0.0, 0.7);
+        if (u >= 9.9) {
+            duoDetached_ = true;
+            duoGone_ = true;
+            if (lead) {
+                duoProp_ = 5;
+                duoBoom_ = u - 9.9;
+                if (phase_ < 5) {
+                    phase_ = 5;
+                    for (int i = 0; i < 24; ++i) {
+                        const double a = 2.0 * kPi * i / 24.0 + Rnd(-0.1, 0.1);
+                        const double v = Rnd(30.0, 55.0);
+                        const uint32_t col = i % 3 == 0 ? kWhite : (i % 3 == 1 ? kBang : kNeon);
+                        Spawn(i % 2 ? '*' : 'p', mid - 1, kFeetRow - 12, std::cos(a) * v, std::sin(a) * v * 0.7 - 10.0, 0.9,
+                              col, 40.0);
+                    }
                 }
+            }
+            if (u >= 12.4) {
+                Hide();
+            }
+            break;
+        }
+        if (lead) {
+            duoProp_ = 2;
+            duoLevel_ = std::min(9, static_cast<int>(u / 0.8));
+            if (u >= 9.0) {
+                duoFlame_ = 1 + static_cast<int>(u / 0.05) % 2;
+            }
+            timerA_ -= dt;
+            if (timerA_ <= 0.0) {
+                timerA_ = u >= 9.0 ? 0.1 : 0.45;
+                Spawn('p', mid + RndI(-10, 14), kFeetRow - 27, Rnd(-2.0, 2.0), -6.0, 1.2, kNeon, 0.0, 0.7);
             }
             if (phase_ == 0) {
                 phase_ = 1;
-                Puff(mid, kFeetRow - 5, 6, kWhite);
-            } else if (u >= 9.6 && phase_ < 5) {
-                phase_ = 5;
-                Puff(mid, kFeetRow - 5, 8, kNeon);
+                Puff(mid, kFeetRow - 12, 8, kWhite);
             }
         }
         if (u < 6.5) {
@@ -3817,6 +3858,16 @@ void Mate::StepDuoKind(double u, double dt)
             pose_.eyes = Eyes::Surprised;
             if (actFlag_ == 0) {
                 actFlag_ = 1;
+                Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -8.0, 0.8, kBang);
+            }
+            break;
+        }
+        if (u >= 9.0) {
+            pose_.eyes = Eyes::Surprised;
+            pose_.lookY = 1;
+            shake_ = (static_cast<int>(u / 0.06) % 2) ? 1 : -1;
+            if (phase_ < 4) {
+                phase_ = 4;
                 Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -8.0, 0.8, kBang);
             }
             break;
@@ -4121,6 +4172,71 @@ void Mate::StepDuoKind(double u, double dt)
             pose_.body = Body::Crouch;
         }
         break;
+
+    case Duo::HighFive: {
+        if (u < 0.5) {
+            pose_.eyes = Eyes::Happy;
+            nearClaw = Claw::Up;
+            break;
+        }
+        if (u < 0.75) {
+            pose_.body = Body::Crouch;
+            pose_.lookY = -1;
+            nearClaw = Claw::Mid;
+            farClaw = Claw::Mid;
+            break;
+        }
+        if (phase_ == 0) {
+            phase_ = 1;
+            hopV_ = 64.0;
+            Puff(kCrabX + 8, kFeetRow - 1, 4, kWhite);
+        }
+        const double air = u - 0.75;
+        if (air < 0.8) {
+            const double lean = air < 0.4 ? Smooth(air / 0.4) : 1.0 - Smooth((air - 0.4) / 0.4);
+            relX_ = duoTo_ + d * 4.0 * s * lean;
+            pose_.legs = Legs::Spread;
+            pose_.eyes = Eyes::Happy;
+            pose_.lookY = -1;
+            nearClaw = Claw::High;
+            farClaw = air < 0.4 ? Claw::Up : Claw::Mid;
+            if (air >= 0.4 && actFlag_ == 0) {
+                actFlag_ = 1;
+                if (lead) {
+                    const double cy = kCrabY - hop_ - 1.0;
+                    Spawn('*', mid - 1, cy - 2, 0.0, -6.0, 0.5, kBang);
+                    for (int i = 0; i < 8; ++i) {
+                        const double a = 2.0 * kPi * i / 8.0;
+                        Spawn(i % 2 ? 's' : 'p', mid - 1, cy, std::cos(a) * 22.0, std::sin(a) * 15.0, 0.6,
+                              i % 2 ? kBang : kWhite);
+                    }
+                }
+            }
+            if (air >= 0.4 && air < 0.5) {
+                shake_ = -d;
+            }
+            break;
+        }
+        pose_.eyes = Eyes::Happy;
+        if (actFlag_ == 1) {
+            actFlag_ = 2;
+            Puff(kCrabX + 8, kFeetRow - 1, 5, kWhite);
+        }
+        if (air < 1.05) {
+            pose_.body = Body::Crouch;
+            break;
+        }
+        nearClaw = Claw::Up;
+        farClaw = Claw::Up;
+        if (phase_ == 1) {
+            phase_ = 2;
+            hopV_ = 28.0;
+            if (lead) {
+                Spawn('h', mid - 2, kCrabY - 9, 0.0, -9.0, 1.2, kHeart);
+            }
+        }
+        break;
+    }
     }
 }
 
@@ -4134,9 +4250,7 @@ void Mate::RenderDuo(int ox, int oy, bool front)
         }
         switch (duoProp_) {
         case 1: canvas_.DrawPot(mid, kFeetRow - 1, frame); break;
-        case 2: canvas_.DrawBomb(mid, kFeetRow - 1, frame, duoLevel_); break;
         case 3: canvas_.DrawAltar(mid, kFeetRow - 1, frame, duoLevel_); break;
-        case 4: canvas_.DrawBigRocket(mid, kFeetRow - 1, duoLevel_, duoFlame_); break;
         default: break;
         }
         return;
@@ -4162,6 +4276,96 @@ void Mate::RenderDuo(int ox, int oy, bool front)
         }
     }
     if (speech_) {
-        canvas_.DrawSpeech(ox + 8, oy - 1, speech_, speechChars_);
+        canvas_.DrawSpeech(ox + 8, oy - (duo_ == Duo::Bomb ? 17 : 1), speech_, speechChars_);
+    }
+}
+
+void Mate::HideProp()
+{
+    if (propShown_) {
+        ShowWindow(prop_, SW_HIDE);
+        propShown_ = false;
+    }
+}
+
+void Mate::RenderProp(POINT crabOrigin)
+{
+    if (!prop_ || (duoProp_ != 2 && duoProp_ != 4 && duoProp_ != 5)) {
+        HideProp();
+        return;
+    }
+    if (propScale_ != scale_ || !propDc_) {
+        propScale_ = scale_;
+        propCanvas_.Resize(kPropW, kPropH, scale_);
+        if (!propDc_) {
+            propDc_ = CreateCompatibleDC(nullptr);
+        } else {
+            SelectObject(propDc_, propOldBmp_);
+            DeleteObject(propDib_);
+        }
+        BITMAPINFO bi{};
+        bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bi.bmiHeader.biWidth = propCanvas_.PixelWidth();
+        bi.bmiHeader.biHeight = -propCanvas_.PixelHeight();
+        bi.bmiHeader.biPlanes = 1;
+        bi.bmiHeader.biBitCount = 32;
+        bi.bmiHeader.biCompression = BI_RGB;
+        propDib_ = CreateDIBSection(propDc_, &bi, DIB_RGB_COLORS, &propBits_, nullptr, 0);
+        propOldBmp_ = SelectObject(propDc_, propDib_);
+    }
+    if (!propBits_) {
+        return;
+    }
+    const int frame = static_cast<int>(clock_ / 0.05);
+    const int dx = kPropCX - MidX();
+    const int dy = kPropBottom - (kFeetRow - 1);
+    propCanvas_.Clear();
+    if (duoProp_ == 5) {
+        propCanvas_.DrawExplosion(kPropCX + 3, kPropBottom, duoBoom_);
+    } else if (duoProp_ == 2) {
+        const int rattle = duoFlame_ == 0 ? 0 : (duoFlame_ == 1 ? -1 : 1);
+        propCanvas_.DrawBomb(kPropCX + rattle, kPropBottom, frame, duoLevel_);
+        if (duoFlame_ > 0) {
+            propCanvas_.DrawGlyph('!', kPropCX + 2, kPropBottom - 34, 0xFF4A4A, duoFlame_ == 1 ? 255 : 120);
+        }
+    } else {
+        propCanvas_.DrawBigRocket(kPropCX, kPropBottom, duoLevel_, duoFlame_);
+        if (duoCount_ > 0) {
+            propCanvas_.DrawGlyph(static_cast<char>('0' + duoCount_), kPropCX - 1, kPropBottom - 62, kWhite, 255);
+        }
+    }
+    for (const Particle& p : particles_) {
+        const int x = static_cast<int>(std::lround(p.x));
+        const int y = static_cast<int>(std::lround(p.y));
+        if (x >= 0 && y >= 0 && x + 4 <= kCanvasW && y + 5 <= kCanvasH) {
+            continue;
+        }
+        const int alpha = static_cast<int>(255.0 * std::min(1.0, p.life / 0.35) * p.alpha);
+        propCanvas_.DrawGlyph(p.ch, x + dx, y + dy, p.color, alpha);
+    }
+    const int w = propCanvas_.PixelWidth();
+    const int h = propCanvas_.PixelHeight();
+    std::memcpy(propBits_, propCanvas_.Data(), static_cast<size_t>(w) * h * 4);
+    SIZE size{w, h};
+    POINT src{0, 0};
+    POINT dst{crabOrigin.x - dx * scale_, crabOrigin.y - dy * scale_};
+    BLENDFUNCTION bf{AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+    UpdateLayeredWindow(prop_, nullptr, &dst, &size, propDc_, &src, 0, &bf, ULW_ALPHA);
+
+    HWND lower = crab_;
+    if (peer_) {
+        for (HWND hw = GetWindow(crab_, GW_HWNDNEXT); hw; hw = GetWindow(hw, GW_HWNDNEXT)) {
+            if (hw == peer_) {
+                lower = peer_;
+                break;
+            }
+        }
+    }
+    if (GetWindow(lower, GW_HWNDNEXT) != prop_) {
+        SetWindowPos(prop_, lower, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+    }
+    if (!propShown_) {
+        ShowWindow(prop_, SW_SHOWNA);
+        propShown_ = true;
     }
 }

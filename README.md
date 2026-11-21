@@ -30,8 +30,8 @@ click its tray icon for the menu.
 - Reacts to the mouse: stares at the cursor, chases it, waves at it, gets dizzy.
 - Drag and throw it; it lands on the next window below.
 - Run it several times for several crabs. When two crabs are close, they play together: talk,
-  toast, cook, juggle, dance, build a big rocket, fix a leaking bomb, fight with light sabers,
-  pray to Saint Algo...
+  toast, cook, juggle, dance, high five, build a big rocket, fix a huge leaking bomb, fight
+  with light sabers, pray to Saint Algo...
 - Configure the chance of each animation, or turn it off.
 - Time of day and seasons: coffee in the morning, nightcap at night, Santa hat in December,
   witch hat at Halloween.
@@ -148,10 +148,13 @@ walk to each other, then:
 - Juggle together: the balls fly from one crab to the other.
 - Cook together: chef toques and a pot between them; one stirs, the other throws in the
   vegetables.
-- Build the big rocket (tech 2): one crab plants a "/!\" danger sign, both hammer, the
-  rocket grows, countdown, and both fly away holding on to it.
-- Fix a leaking atomic bomb: neon green liquid on the ground; one crab hammers and sweats,
-  the other sips from a mug and says "THIS IS FINE.".
+- Build the big rocket (tech 2, a Saturn V look-alike about three crabs high): one crab
+  plants a "/!\" danger sign, both hammer, the rocket grows stage by stage, countdown, and
+  both fly away holding on to it.
+- Fix a huge leaking atomic bomb: a puddle of neon green liquid grows on the ground; one
+  crab hammers and sweats, the other sips from a mug and says "THIS IS FINE.". Then the
+  bomb rattles, and explodes: flash, fireball, shockwave, mushroom cloud. Both crabs are
+  gone.
 - Toast with their mugs.
 - Scheme: sly eyes, whispers, claws rubbed together, then they look at you.
 - Light saber duel: blue against red, with sparks when the blades cross.
@@ -159,11 +162,13 @@ walk to each other, then:
 - Dance together, mirrored.
 - Pray to Saint Algo: occult robes with glowing eyes, an altar with candles and a floating
   golden `{ }`.
+- High five: they crouch, jump, and slap their claws together at the top of the jump.
 
 The crabs find each other by their window class and talk with window messages (ask, accept,
 decline, end). The one that asks leads: it sends the meeting point and the walk time, and
-draws the shared props (pot, rocket, bomb, altar, sign, balls). If one of them is dragged,
-clicked or hidden, the other stops too.
+draws the shared props (pot, rocket, bomb, altar, sign, balls). The big rocket and the bomb
+do not fit in a crab window: the leader draws them in a second click-through window, kept
+just below both crabs. If one of them is dragged, clicked or hidden, the other stops too.
 
 ## How it works
 
@@ -240,13 +245,19 @@ Pure Win32 + GDI, C++20, no external library.
     <td align="center"><img src="art/poses/duo_talk.png" alt="Two crabs talking" width="168"><br>Duo: talk</td>
     <td align="center"><img src="art/poses/duo_toast.png" alt="Two crabs toasting with mugs" width="168"><br>Duo: toast</td>
     <td align="center"><img src="art/poses/duo_cook.png" alt="Two crabs cooking" width="168"><br>Duo: cook</td>
-    <td align="center"><img src="art/poses/duo_rocket.png" alt="Two crabs building the big rocket" width="168"><br>Duo: big rocket</td>
+    <td align="center"><img src="art/poses/duo_highfive.png" alt="Two crabs jump and high five in the air" width="168"><br>Duo: high five</td>
   </tr>
   <tr>
-    <td align="center"><img src="art/poses/duo_bomb.png" alt="Two crabs and a leaking bomb: this is fine" width="168"><br>Duo: this is fine</td>
     <td align="center"><img src="art/poses/duo_saber.png" alt="Two crabs in a light saber duel" width="168"><br>Duo: light sabers</td>
     <td align="center"><img src="art/poses/duo_boost.png" alt="A crab gives the other a leg up" width="168"><br>Duo: boost</td>
     <td align="center"><img src="art/poses/duo_pray.png" alt="Two cultist crabs pray to Saint Algo" width="168"><br>Duo: Saint Algo</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="art/poses/duo_rocket.png" alt="Two crabs building a Saturn V style rocket" width="204"><br>Duo: big rocket</td>
+    <td align="center" colspan="2"><img src="art/poses/duo_bomb.png" alt="Two crabs and a big leaking bomb: this is fine" width="252"><br>Duo: this is fine</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="4"><img src="art/poses/duo_boom.png" alt="The bomb explodes in a mushroom cloud" width="252"><br>Duo: this was not fine</td>
   </tr>
 </table>
 

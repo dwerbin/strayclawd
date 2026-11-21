@@ -46,6 +46,7 @@ const AnimInfo kAnims[kAnimCount] = {
     {L"DuoBoost", L"Boost onto a window", AnimGroup::Duo, 1, L"needs a window above"},
     {L"DuoDance", L"Dance together", AnimGroup::Duo, 1, nullptr},
     {L"DuoPray", L"Pray to Saint Algo", AnimGroup::Duo, 1, nullptr},
+    {L"DuoHighFive", L"Jump and high five", AnimGroup::Duo, 2, nullptr},
     {L"Parachute", L"Arrive by parachute", AnimGroup::Event, 15, L"% of the visits"},
     {L"SidePeek", L"Peek from a window side", AnimGroup::Event, 25, L"% of the visits"},
     {L"Shy", L"Shy peek (goes back)", AnimGroup::Event, 30, L"% of the visits"},

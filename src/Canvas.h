@@ -72,6 +72,7 @@ public:
     void DrawBigRocket(int cx, int bottom, int level, int flame);
     void DrawPot(int cx, int bottom, int frame);
     void DrawBomb(int cx, int bottom, int frame, int puddle);
+    void DrawExplosion(int cx, int bottom, double t);
     void DrawAltar(int cx, int bottom, int frame, int glow);
     void DrawSpeech(int cx, int bottom, const char* text, int visible);
     void DrawText(const char* text, int x, int y, uint32_t rgb, int visible = 1000);
