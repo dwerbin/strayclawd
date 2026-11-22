@@ -32,7 +32,9 @@ private:
                      Build, Paint, Magic, Cook, Stare, Dizzy,
                      Fish, Read, Juggle, Water, Fitness, Skate, Umbrella, Coffee, Yawn, Chase,
                      Wizard, GreyWizard, Rocket, Dust, Sweep, Yoga, Duo };
-    enum class Duo { Look, Wave, Talk, Juggle, Cook, Rocket, Bomb, Toast, Scheme, Saber, Boost, Dance, Pray, HighFive };
+    enum class Duo { Look, Wave, Talk, Juggle, Cook, Rocket, Bomb, Toast, Scheme, Saber, Boost, Dance, Pray, HighFive,
+                     Tug, Pong, Rps, Selfie, Pair, Pillow, Leapfrog, Mirror, Picnic, Chess, Seesaw, Deploy,
+                     Pyramid, Band, Standup, Ritual, Review, Conga };
     enum class Surface { None, Window, Ground };
     enum class ZMode { Free, Above, Behind };
 
@@ -106,6 +108,12 @@ private:
     static bool IsCrab(HWND hwnd);
     bool PeerFoot(HWND peer, double* x, double* y) const;
     HWND FindPeer(double maxDx, double* x, double* y) const;
+    int FindPeers(double maxDx, HWND* peers, double* xs) const;
+    bool IsTrio() const;
+    void StepDuoMore(double u, double dt);
+    void StepTrio(double u, double dt);
+    void DrawDuoBig(Canvas& c, int dx, int dy, int frame);
+    void EndAsk();
     bool FindBoostTarget(double x, double footY, double* top);
     bool TryDuo(int forced);
     bool CanJoinDuo(bool forced) const;
@@ -113,7 +121,7 @@ private:
     void OnDuoAccept(HWND from, int kind);
     void OnDuoDecline(HWND from);
     void OnDuoEnd(HWND from);
-    void BeginDuo(Duo kind, bool lead, HWND peer, int meet, int side, double approach);
+    void BeginDuo(Duo kind, bool lead, HWND peer, int meet, int side, double approach, int slot = 0);
     void StepDuo(double dt);
     void StepDuoKind(double u, double dt);
     void RenderDuo(int ox, int oy, bool front);
@@ -289,6 +297,20 @@ private:
     bool duoBalls_ = false;
     bool duoGone_ = false;
     double duoBoom_ = 0.0;
+    HWND peer2_ = nullptr;
+    HWND askPeer2_ = nullptr;
+    int askAccepts_ = 0;
+    int askSlot_ = 0;
+    int duoSlot_ = 0;
+    double duoMeet_ = 0.0;
+    int duoSeed_ = 0;
+    bool duoBig_ = false;
+    double duoU_ = 0.0;
+    int duoCrumb_ = 0;
+    int rpsSign_ = -1;
+    char bugIcon_ = 0;
+    uint32_t bugColor_ = 0;
+    int ownProp_ = 0;
 
     HWND prop_ = nullptr;
     HDC propDc_ = nullptr;

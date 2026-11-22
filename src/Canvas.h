@@ -9,7 +9,8 @@ enum class Claw { High, Up, Mid, Down };
 enum class Legs { Stand, LiftLeft, LiftRight, Spread };
 enum class Body { Normal, Crouch, Squash };
 enum class Hat { None, HardHat, Beret, TopHat, Toque, Nightcap, Santa, Witch, Party, Wizard, Headband };
-enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff, Duster, Broom, Saber, Wrench };
+enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff, Duster, Broom, Saber, Wrench,
+                  Paddle, Phone, Pillow, Sandwich, Guitar, Mic };
 
 constexpr int kNoBarbell = -99;
 
@@ -75,6 +76,16 @@ public:
     void DrawExplosion(int cx, int bottom, double t);
     void DrawAltar(int cx, int bottom, int frame, int glow);
     void DrawSpeech(int cx, int bottom, const char* text, int visible);
+    void DrawSignBubble(int cx, int bottom, int sign);
+    void DrawRope(int x0, int x1, int y, int sag);
+    void DrawPongTable(int cx, int bottom);
+    void DrawPicnic(int cx, int bottom, int antX, bool antCarry, int crumbX);
+    void DrawChess(int cx, int bottom, int moves, bool flipped);
+    void DrawSeesaw(int cx, int bottom, int half, int tiltRight);
+    void DrawDeploy(int cx, int bottom, bool pressed, int alarm);
+    void DrawBoard(int cx, int bottom, int notes);
+    void DrawDrums(int cx, int bottom, int hit);
+    void DrawDemon(int cx, int y, int alpha);
     void DrawText(const char* text, int x, int y, uint32_t rgb, int visible = 1000);
     void DrawBigText(const char* text, int cx, int y, uint32_t fill, uint32_t outline, int alpha = 255);
     static int TextWidth(const char* text);

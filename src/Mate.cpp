@@ -1252,6 +1252,10 @@ void Mate::Tick(double dt)
     duoCount_ = 0;
     duoBalls_ = false;
     duoGone_ = false;
+    duoBig_ = false;
+    rpsSign_ = -1;
+    bugIcon_ = 0;
+    ownProp_ = 0;
     keyRate_ *= std::exp(-dt);
     if (state_ == State::Active) {
         CheckTyping();
@@ -1259,16 +1263,21 @@ void Mate::Tick(double dt)
     }
     StepState(dt);
     keyPresses_ = 0;
-    if (peer_ && !(state_ == State::Active && act_ == Act::Duo)) {
+    if ((peer_ || peer2_) && !(state_ == State::Active && act_ == Act::Duo)) {
         if (!duoDetached_) {
-            PostMessageW(peer_, kMsgDuoEnd, 0, reinterpret_cast<LPARAM>(crab_));
+            for (HWND h : {peer_, peer2_}) {
+                if (h) {
+                    PostMessageW(h, kMsgDuoEnd, 0, reinterpret_cast<LPARAM>(crab_));
+                }
+            }
         }
         peer_ = nullptr;
+        peer2_ = nullptr;
     }
     if (askPeer_) {
         askT_ -= dt;
         if (askT_ <= 0.0) {
-            askPeer_ = nullptr;
+            EndAsk();
         }
     }
     if (state_ == State::Hidden) {
@@ -3216,14 +3225,33 @@ static_assert(sizeof(WPARAM) >= 8, "the duo request packs the meeting point in t
 
 double DuoGap(int kind)
 {
-    static const double kGaps[kDuoCount] = {26, 30, 26, 30, 34, 38, 54, 28, 20, 34, 18, 28, 34, 24};
+    static const double kGaps[kDuoCount] = {26, 30, 26, 30, 34, 38, 54, 28, 20, 34, 18, 28, 34, 24,
+                                            40, 44, 24, 18, 22, 22, 18, 26, 44, 30, 46, 34,
+                                            8, 22, 22, 26, 20, 15};
     return kGaps[kind];
 }
 
 double DuoLength(int kind)
 {
-    static const double kLengths[kDuoCount] = {4.0, 3.0, 7.2, 7.0, 8.0, 30.0, 12.6, 5.0, 7.0, 8.0, 4.5, 7.2, 9.0, 3.6};
+    static const double kLengths[kDuoCount] = {4.0, 3.0, 7.2, 7.0, 8.0, 30.0, 12.6, 5.0, 7.0, 8.0, 4.5, 7.2, 9.0, 3.6,
+                                               7.0, 8.6, 5.6, 5.2, 9.0, 7.5, 6.4, 7.2, 10.5, 9.5, 9.0, 9.0,
+                                               8.0, 9.0, 10.0, 9.5, 8.5, 9.5};
     return kLengths[kind];
+}
+
+double DuoReach(int kind)
+{
+    switch (kind) {
+    case kAnimDuoLeapfrog - kAnimDuoLook: return 36.0;
+    case kAnimTrioConga - kAnimDuoLook: return 26.0;
+    default: return 0.0;
+    }
+}
+
+double DuoHalf(int kind)
+{
+    const double g = DuoGap(kind);
+    return (kind >= kFirstTrio ? g : g / 2.0) + DuoReach(kind);
 }
 
 }
@@ -3301,24 +3329,88 @@ bool Mate::FindBoostTarget(double x, double footY, double* top)
     return found;
 }
 
+int Mate::FindPeers(double maxDx, HWND* peers, double* xs) const
+{
+    int n = 0;
+    double dist[2] = {0.0, 0.0};
+    for (HWND h = FindWindowExW(nullptr, nullptr, kCrabClass, nullptr); h; h = FindWindowExW(nullptr, h, kCrabClass, nullptr)) {
+        double px = 0.0;
+        double py = 0.0;
+        if (h == crab_ || !GetPropW(h, kDuoProp) || !PeerFoot(h, &px, &py) || std::abs(py - footY_) > 3.0 * scale_) {
+            continue;
+        }
+        const double dd = std::abs(px - footX_);
+        if (dd > maxDx) {
+            continue;
+        }
+        int at = n;
+        while (at > 0 && dist[at - 1] > dd) {
+            --at;
+        }
+        if (at >= 2) {
+            continue;
+        }
+        for (int k = std::min(n, 1); k > at; --k) {
+            peers[k] = peers[k - 1];
+            xs[k] = xs[k - 1];
+            dist[k] = dist[k - 1];
+        }
+        peers[at] = h;
+        xs[at] = px;
+        dist[at] = dd;
+        n = std::min(2, n + 1);
+    }
+    return n;
+}
+
+bool Mate::IsTrio() const
+{
+    return static_cast<int>(duo_) >= kFirstTrio;
+}
+
+void Mate::EndAsk()
+{
+    if (askPeer2_) {
+        if (askAccepts_ & 1) {
+            PostMessageW(askPeer_, kMsgDuoEnd, 0, reinterpret_cast<LPARAM>(crab_));
+        }
+        if (askAccepts_ & 2) {
+            PostMessageW(askPeer2_, kMsgDuoEnd, 0, reinterpret_cast<LPARAM>(crab_));
+        }
+    }
+    askPeer_ = nullptr;
+    askPeer2_ = nullptr;
+    askAccepts_ = 0;
+}
+
 bool Mate::TryDuo(int forced)
 {
     if (askPeer_ || peer_ || state_ != State::Active || surface_ == Surface::None || flyY_ > 0.0 || overX_ != 0.0) {
         return false;
     }
     const double s = scale_;
+    const double maxDx = (forced >= 0 ? 400.0 : 120.0) * s;
     double px = 0.0;
     double py = 0.0;
-    const HWND peer = FindPeer((forced >= 0 ? 400.0 : 120.0) * s, &px, &py);
+    const HWND peer = FindPeer(maxDx, &px, &py);
     if (!peer) {
         return false;
     }
+    HWND trio[2] = {nullptr, nullptr};
+    double trioX[2] = {0.0, 0.0};
+    const bool canTrio = FindPeers(maxDx, trio, trioX) == 2;
     const int side = px >= footX_ ? 1 : -1;
-    auto meetFor = [&](int kind) {
-        const double half = DuoGap(kind) * s / 2.0;
+    auto clampMeet = [&](double center, int kind) {
+        const double half = DuoHalf(kind) * s;
         const double lo = surfRect_.left + 10.0 * s + half;
         const double hi = std::max(lo, surfRect_.right - 10.0 * s - half);
-        return std::clamp((footX_ + px) / 2.0, lo, hi);
+        return std::clamp(center, lo, hi);
+    };
+    auto meetFor = [&](int kind) {
+        if (kind >= kFirstTrio) {
+            return clampMeet((footX_ + trioX[0] + trioX[1]) / 3.0, kind);
+        }
+        return clampMeet((footX_ + px) / 2.0, kind);
     };
     auto canBoost = [&](int kind) {
         double top = 0.0;
@@ -3330,6 +3422,9 @@ bool Mate::TryDuo(int forced)
         int total = 0;
         for (int k = 0; k < kDuoCount; ++k) {
             weights[k] = settings_.Weight(kAnimFirstDuo + k);
+            if (weights[k] > 0 && k >= kFirstTrio && !canTrio) {
+                weights[k] = 0;
+            }
             if (weights[k] > 0 && k == static_cast<int>(Duo::Boost) && !canBoost(k)) {
                 weights[k] = 0;
             }
@@ -3342,18 +3437,49 @@ bool Mate::TryDuo(int forced)
         for (kind = 0; kind < kDuoCount - 1 && r >= weights[kind]; ++kind) {
             r -= weights[kind];
         }
+    } else if (kind >= kFirstTrio && !canTrio) {
+        return false;
     } else if (kind == static_cast<int>(Duo::Boost) && !canBoost(kind)) {
         return false;
     }
     const double meet = meetFor(kind);
-    const double half = DuoGap(kind) * s / 2.0;
-    const double walk = std::max(std::abs(meet - side * half - footX_), std::abs(meet + side * half - px));
-    askPeer_ = peer;
     askT_ = 1.0;
     askDuo_ = kind;
     askMeet_ = static_cast<int>(std::lround(meet));
-    askSide_ = side;
     askForced_ = forced >= 0;
+    if (kind >= kFirstTrio) {
+        const double g = DuoGap(kind) * s;
+        double xs[3] = {footX_, trioX[0], trioX[1]};
+        int order[3] = {0, 1, 2};
+        std::sort(order, order + 3, [&](int a, int b) { return xs[a] < xs[b]; });
+        int slots[3] = {0, 0, 0};
+        for (int i = 0; i < 3; ++i) {
+            slots[order[i]] = i - 1;
+        }
+        double walk = 0.0;
+        for (int i = 0; i < 3; ++i) {
+            walk = std::max(walk, std::abs(meet + slots[i] * g - xs[i]));
+        }
+        askPeer_ = trio[0];
+        askPeer2_ = trio[1];
+        askAccepts_ = 0;
+        askSlot_ = slots[0];
+        askSide_ = 1;
+        askApproach_ = static_cast<int>(std::lround(std::clamp(walk / (kWalkSpeed * s), 0.6, 20.0) * 10.0));
+        for (int i = 0; i < 2; ++i) {
+            const WPARAM wp = (static_cast<WPARAM>(static_cast<uint32_t>(askMeet_)) << 32) |
+                              (static_cast<WPARAM>(askApproach_) << 16) |
+                              (static_cast<WPARAM>(slots[i + 1] + 1) << 10) | (askForced_ ? 0x200u : 0u) |
+                              static_cast<WPARAM>(kind);
+            PostMessageW(trio[i], kMsgDuoAsk, wp, reinterpret_cast<LPARAM>(crab_));
+        }
+        return true;
+    }
+    const double half = DuoGap(kind) * s / 2.0;
+    const double walk = std::max(std::abs(meet - side * half - footX_), std::abs(meet + side * half - px));
+    askPeer_ = peer;
+    askPeer2_ = nullptr;
+    askSide_ = side;
     askApproach_ = static_cast<int>(std::lround(std::clamp(walk / (kWalkSpeed * s), 0.6, 20.0) * 10.0));
     const WPARAM wp = (static_cast<WPARAM>(static_cast<uint32_t>(askMeet_)) << 32) |
                       (static_cast<WPARAM>(askApproach_) << 16) | (side > 0 ? 0x100u : 0u) |
@@ -3391,7 +3517,9 @@ void Mate::OnDuoAsk(HWND from, WPARAM wp)
     }
     const int kind = static_cast<int>(wp & 0xFF);
     const bool forced = (wp & 0x200) != 0;
+    const bool trio = kind >= kFirstTrio;
     const int leaderSide = (wp & 0x100) ? 1 : -1;
+    const int slot = static_cast<int>((wp >> 10) & 3) - 1;
     const int meet = static_cast<int>(static_cast<uint32_t>(wp >> 32));
     const double approach = static_cast<double>((wp >> 16) & 0xFFFF) / 10.0;
     const LPARAM me = reinterpret_cast<LPARAM>(crab_);
@@ -3401,12 +3529,12 @@ void Mate::OnDuoAsk(HWND from, WPARAM wp)
     double py = 0.0;
     ok = ok && PeerFoot(from, &px, &py) && std::abs(py - footY_) <= 3.0 * s;
     if (ok) {
-        const double half = DuoGap(kind) * s / 2.0;
-        const double rel = meet + leaderSide * half - surfRect_.left;
+        const double target = trio ? meet + slot * DuoGap(kind) * s : meet + leaderSide * DuoGap(kind) * s / 2.0;
+        const double rel = target - surfRect_.left;
         const double w = surfRect_.right - surfRect_.left;
         ok = rel >= 10.0 * s - 2.0 && rel <= w - 10.0 * s + 2.0;
         if (ok && kind == static_cast<int>(Duo::Boost)) {
-            ok = FindBoostTarget(meet - leaderSide * half, edge_, &boostTop_);
+            ok = FindBoostTarget(meet - leaderSide * DuoGap(kind) * s / 2.0, edge_, &boostTop_);
         }
     }
     if (!ok) {
@@ -3414,13 +3542,33 @@ void Mate::OnDuoAsk(HWND from, WPARAM wp)
         return;
     }
     askPeer_ = nullptr;
+    askPeer2_ = nullptr;
     PostMessageW(from, kMsgDuoAccept, static_cast<WPARAM>(kind), me);
-    BeginDuo(static_cast<Duo>(kind), false, from, meet, -leaderSide, approach);
+    BeginDuo(static_cast<Duo>(kind), false, from, meet, trio ? 1 : -leaderSide, approach, trio ? slot : 0);
 }
 
 void Mate::OnDuoAccept(HWND from, int kind)
 {
-    if (from && from == askPeer_ && kind == askDuo_ && state_ == State::Active && act_ == Act::Sit && !peer_) {
+    const bool ready = state_ == State::Active && act_ == Act::Sit && !peer_ && kind == askDuo_;
+    if (from && askPeer2_ && (from == askPeer_ || from == askPeer2_)) {
+        askAccepts_ |= from == askPeer_ ? 1 : 2;
+        if (askAccepts_ != 3) {
+            return;
+        }
+        if (!ready) {
+            EndAsk();
+            return;
+        }
+        const HWND a = askPeer_;
+        const HWND b = askPeer2_;
+        askPeer_ = nullptr;
+        askPeer2_ = nullptr;
+        askAccepts_ = 0;
+        BeginDuo(static_cast<Duo>(kind), true, a, askMeet_, 1, askApproach_ / 10.0, askSlot_);
+        peer2_ = b;
+        return;
+    }
+    if (from && from == askPeer_ && ready) {
         askPeer_ = nullptr;
         BeginDuo(static_cast<Duo>(kind), true, from, askMeet_, askSide_, askApproach_ / 10.0);
         return;
@@ -3435,10 +3583,10 @@ void Mate::OnDuoAccept(HWND from, int kind)
 
 void Mate::OnDuoDecline(HWND from)
 {
-    if (!from || from != askPeer_) {
+    if (!from || (from != askPeer_ && from != askPeer2_)) {
         return;
     }
-    askPeer_ = nullptr;
+    EndAsk();
     if (askForced_ && state_ == State::Active) {
         Spawn('?', kCrabX + 6, kCrabY - 8, 0.0, -6.0, 1.0, kWhite);
     }
@@ -3446,25 +3594,35 @@ void Mate::OnDuoDecline(HWND from)
 
 void Mate::OnDuoEnd(HWND from)
 {
-    if (from && from == askPeer_) {
-        askPeer_ = nullptr;
+    if (from && (from == askPeer_ || from == askPeer2_)) {
+        EndAsk();
     }
-    if (!from || from != peer_ || state_ != State::Active || act_ != Act::Duo || duoDetached_) {
+    if (!from || (from != peer_ && from != peer2_) || state_ != State::Active || act_ != Act::Duo || duoDetached_) {
         return;
     }
-    peer_ = nullptr;
+    if (from == peer_) {
+        peer_ = peer2_;
+        peer2_ = nullptr;
+    } else {
+        peer2_ = nullptr;
+    }
     bubble_ = -1;
     NextActivity();
 }
 
-void Mate::BeginDuo(Duo kind, bool lead, HWND peer, int meet, int side, double approach)
+void Mate::BeginDuo(Duo kind, bool lead, HWND peer, int meet, int side, double approach, int slot)
 {
     const double s = scale_;
     BeginAct(Act::Duo);
     duo_ = kind;
     duoLead_ = lead;
     peer_ = peer;
+    peer2_ = nullptr;
     duoSide_ = side;
+    duoSlot_ = slot;
+    duoMeet_ = meet;
+    duoSeed_ = meet;
+    duoCrumb_ = 0;
     duoDetached_ = false;
     duoLost_ = 0.0;
     const double gap = DuoGap(static_cast<int>(kind));
@@ -3477,7 +3635,12 @@ void Mate::BeginDuo(Duo kind, bool lead, HWND peer, int meet, int side, double a
     duoFrom_ = relX_;
     const double w = surfRect_.right - surfRect_.left;
     const double m = 10.0 * s;
-    duoTo_ = std::clamp(meet - side * gap * s / 2.0 - surfRect_.left, m, std::max(m, w - m));
+    double target = meet - side * gap * s / 2.0;
+    if (static_cast<int>(kind) >= kFirstTrio) {
+        target = meet + slot * gap * s;
+        duoSide_ = slot == 0 ? 1 : -slot;
+    }
+    duoTo_ = std::clamp(target - surfRect_.left, m, std::max(m, w - m));
     duoApproach_ = std::clamp(approach, 0.6, 20.0);
     actDur_ = duoApproach_ + DuoLength(static_cast<int>(kind));
     duoCooldown_ = Rnd(20.0, 40.0);
@@ -3485,6 +3648,9 @@ void Mate::BeginDuo(Duo kind, bool lead, HWND peer, int meet, int side, double a
 
 int Mate::MidX() const
 {
+    if (IsTrio()) {
+        return kCrabX + 8 + static_cast<int>(std::lround((duoMeet_ - footX_) / scale_));
+    }
     return kCrabX + 8 + duoSide_ * static_cast<int>(std::lround(duoLive_ / 2.0));
 }
 
@@ -3494,9 +3660,15 @@ void Mate::StepDuo(double dt)
     if (!duoDetached_) {
         double px = 0.0;
         double py = 0.0;
-        if (PeerFoot(peer_, &px, &py) && std::abs(py - footY_) <= 6.0 * s) {
-            duoLost_ = 0.0;
+        bool alive = PeerFoot(peer_, &px, &py) && std::abs(py - footY_) <= 6.0 * s;
+        if (alive && !IsTrio()) {
             duoLive_ = std::abs(px - footX_) / s;
+        }
+        if (alive && peer2_) {
+            alive = PeerFoot(peer2_, &px, &py) && std::abs(py - footY_) <= 6.0 * s;
+        }
+        if (alive) {
+            duoLost_ = 0.0;
         } else {
             duoLost_ += dt;
             if (duoLost_ > 0.5) {
@@ -4236,6 +4408,13 @@ void Mate::StepDuoKind(double u, double dt)
         }
         break;
     }
+    default:
+        if (IsTrio()) {
+            StepTrio(u, dt);
+        } else {
+            StepDuoMore(u, dt);
+        }
+        break;
     }
 }
 
@@ -4274,6 +4453,15 @@ void Mate::RenderDuo(int ox, int oy, bool front)
             canvas_.DrawGlyph('t', static_cast<int>(std::lround(x)) - 1, static_cast<int>(std::lround(y)) - 1, kBalls[k], 255);
         }
     }
+    if (ownProp_ > 0) {
+        canvas_.DrawDrums(kCrabX + 8, kFeetRow - 1, ownProp_ - 1);
+    }
+    if (bugIcon_) {
+        canvas_.DrawGlyph(bugIcon_, ox + 6, oy - 9, bugColor_, 255);
+    }
+    if (rpsSign_ >= 0) {
+        canvas_.DrawSignBubble(ox + 8, oy - 1, rpsSign_);
+    }
     if (speech_) {
         canvas_.DrawSpeech(ox + 8, oy - (duo_ == Duo::Bomb ? 17 : 1), speech_, speechChars_);
     }
@@ -4289,7 +4477,7 @@ void Mate::HideProp()
 
 void Mate::RenderProp(POINT crabOrigin)
 {
-    if (!prop_ || (duoProp_ != 2 && duoProp_ != 4 && duoProp_ != 5)) {
+    if (!prop_ || (duoProp_ != 2 && duoProp_ != 4 && duoProp_ != 5 && !duoBig_)) {
         HideProp();
         return;
     }
@@ -4319,7 +4507,9 @@ void Mate::RenderProp(POINT crabOrigin)
     const int dx = kPropCX - MidX();
     const int dy = kPropBottom - (kFeetRow - 1);
     propCanvas_.Clear();
-    if (duoProp_ == 5) {
+    if (duoBig_) {
+        DrawDuoBig(propCanvas_, dx, dy, frame);
+    } else if (duoProp_ == 5) {
         propCanvas_.DrawExplosion(kPropCX + 3, kPropBottom, duoBoom_);
     } else if (duoProp_ == 2) {
         const int rattle = duoFlame_ == 0 ? 0 : (duoFlame_ == 1 ? -1 : 1);
@@ -4352,12 +4542,11 @@ void Mate::RenderProp(POINT crabOrigin)
     UpdateLayeredWindow(prop_, nullptr, &dst, &size, propDc_, &src, 0, &bf, ULW_ALPHA);
 
     HWND lower = crab_;
-    if (peer_) {
-        for (HWND hw = GetWindow(crab_, GW_HWNDNEXT); hw; hw = GetWindow(hw, GW_HWNDNEXT)) {
-            if (hw == peer_) {
-                lower = peer_;
-                break;
-            }
+    int left = (peer_ ? 1 : 0) + (peer2_ ? 1 : 0);
+    for (HWND hw = GetWindow(crab_, GW_HWNDNEXT); hw && left > 0; hw = GetWindow(hw, GW_HWNDNEXT)) {
+        if (hw == peer_ || hw == peer2_) {
+            lower = hw;
+            --left;
         }
     }
     if (GetWindow(lower, GW_HWNDNEXT) != prop_) {
@@ -4366,5 +4555,1049 @@ void Mate::RenderProp(POINT crabOrigin)
     if (!propShown_) {
         ShowWindow(prop_, SW_SHOWNA);
         propShown_ = true;
+    }
+}
+
+namespace {
+
+constexpr char kLgtm[] = "LGTM";
+constexpr uint32_t kBugRed = 0xE23B3B;
+constexpr uint32_t kCheckGreen = 0x5DBB4A;
+
+double SeesawTilt(double u)
+{
+    if (u < 0.6) {
+        return 0.0;
+    }
+    if (u < 5.0) {
+        return 4.0 * std::sin(2.4 * (u - 0.6));
+    }
+    return u < 5.6 ? 4.0 : -4.0;
+}
+
+double PongArc(double q)
+{
+    if (q < 0.7) {
+        const double r = q / 0.7;
+        return 4.0 * r - 12.0 * std::sin(kPi * r);
+    }
+    const double r = (q - 0.7) / 0.3;
+    return 4.0 * (1.0 - r) - 4.0 * std::sin(kPi * r);
+}
+
+double PongBallX(double v, double from, double to, double* y)
+{
+    const double t = 0.55;
+    const int trip = static_cast<int>(v / t);
+    if (trip < 12) {
+        const double q = std::fmod(v, t) / t;
+        const double a = trip % 2 == 0 ? from : to;
+        const double b = trip % 2 == 0 ? to : from;
+        *y = PongArc(q);
+        return Lerp(a, b, q);
+    }
+    const double q = (v - 12 * t) / t;
+    *y = q < 1.0 ? PongArc(q) : 70.0 * (q - 1.0) * (q - 1.0);
+    return from + (to - from) * q;
+}
+
+double AntOffset(double u)
+{
+    if (u < 5.2) {
+        return -999.0;
+    }
+    if (u < 6.6) {
+        return 30.0 - 24.0 * (u - 5.2) / 1.4;
+    }
+    if (u < 6.9) {
+        return 6.0;
+    }
+    return u < 8.6 ? 6.0 + 30.0 * (u - 6.9) / 1.7 : -999.0;
+}
+
+}
+
+void Mate::StepDuoMore(double u, double dt)
+{
+    const double s = scale_;
+    const int d = duoSide_;
+    const bool lead = duoLead_;
+    Claw& nearClaw = d > 0 ? pose_.right : pose_.left;
+    Claw& farClaw = d > 0 ? pose_.left : pose_.right;
+    const int nearX = kCrabX + (d > 0 ? 15 : 0);
+    const int mid = MidX();
+    const int line = lead ? d : -d;
+    if (lead) {
+        duoU_ = u;
+    }
+    auto typeKeys = [&](double period) {
+        const int k = static_cast<int>(u / period);
+        const bool down = std::fmod(u, period) < period * 0.6;
+        pose_.keyboard = true;
+        pose_.pressedKey = down ? (k % 2 == 0 ? 2 + (k * 3) % 6 : 8 + (k * 5) % 6) : -1;
+        pose_.left = (k % 2 == 0 && down) ? Claw::Down : Claw::Mid;
+        pose_.right = (k % 2 == 1 && down) ? Claw::Down : Claw::Mid;
+        pose_.lookY = 1;
+        if (down && counter_ != k && k % 3 == 0) {
+            counter_ = k;
+            Spawn(kCodeGlyphs[k % 9], kCrabX + 6 + k % 5, kCrabY - 6, Rnd(-4.0, 4.0), Rnd(-15.0, -9.0), 1.0, kCode);
+        }
+    };
+    auto laugh = [&](double hop) {
+        pose_.eyes = Eyes::Happy;
+        if (phase_ < 9) {
+            phase_ = 9;
+            hopV_ = hop;
+            if (lead) {
+                Spawn('h', mid - 2, kCrabY - 9, 0.0, -9.0, 1.2, kHeart);
+            }
+        }
+    };
+
+    switch (duo_) {
+    case Duo::Tug: {
+        if (lead) {
+            duoBig_ = true;
+        }
+        nearClaw = Claw::Mid;
+        farClaw = Claw::Mid;
+        if (u < 5.0) {
+            const double r = 2.5 * std::sin(u * 2.1) * std::min(1.0, u / 0.8);
+            relX_ = duoTo_ + line * r * s;
+            const bool losing = lead ? r > 0.8 : r < -0.8;
+            pose_.eyes = losing ? Eyes::Closed : Eyes::Open;
+            pose_.legs = (static_cast<int>(u / 0.15) % 2) ? Legs::Spread : Legs::Stand;
+            shake_ = (static_cast<int>(u / 0.08) % 2) ? -d : 0;
+            break;
+        }
+        const double r0 = 2.5 * std::sin(5.0 * 2.1);
+        if (u < 5.4) {
+            relX_ = duoTo_ + line * (r0 - 6.0 * Smooth((u - 5.0) / 0.4)) * s;
+            pose_.eyes = lead ? Eyes::Happy : Eyes::Surprised;
+            break;
+        }
+        relX_ = duoTo_ + line * (r0 - 6.0) * s;
+        if (lead) {
+            nearClaw = (static_cast<int>(u / 0.2) % 2) ? Claw::High : Claw::Up;
+            farClaw = nearClaw == Claw::High ? Claw::Up : Claw::High;
+            laugh(35.0);
+        } else {
+            pose_.body = Body::Squash;
+            pose_.eyes = Eyes::Dizzy;
+            pose_.frame = static_cast<int>(u / 0.1);
+            pose_.legs = Legs::Spread;
+            nearClaw = Claw::Down;
+            farClaw = Claw::Down;
+            if (phase_ == 0) {
+                phase_ = 1;
+                Puff(kCrabX + 8, kFeetRow - 2, 5, kDust);
+            }
+        }
+        break;
+    }
+
+    case Duo::Pong: {
+        if (lead) {
+            duoBig_ = true;
+        }
+        pose_.tool = Tool::Paddle;
+        pose_.toolSide = d;
+        nearClaw = Claw::Up;
+        const double t = 0.55;
+        const double v = u - 0.6;
+        if (v < 0.0) {
+            break;
+        }
+        const int trip = static_cast<int>(v / t);
+        const double q = std::fmod(v, t) / t;
+        const bool mineStart = (trip % 2 == 0) == lead;
+        const bool atMe = (mineStart && q < 0.15) || (!mineStart && q > 0.85);
+        if (trip < 12 && atMe) {
+            nearClaw = Claw::High;
+        }
+        if (trip >= 12) {
+            if (lead) {
+                if (v > 12 * t + 0.9) {
+                    laugh(35.0);
+                }
+            } else {
+                if (q > 0.8 || trip > 12) {
+                    nearClaw = Claw::High;
+                    pose_.eyes = Eyes::Surprised;
+                }
+                if (v > 12 * t + 0.8) {
+                    pose_.lookX = -d;
+                    if (phase_ == 0) {
+                        phase_ = 1;
+                        Spawn('?', kCrabX + 6, kCrabY - 9, 0.0, -6.0, 1.2, kWhite);
+                    }
+                }
+            }
+        }
+        break;
+    }
+
+    case Duo::Rps: {
+        const int a = ((duoSeed_ % 3) + 3) % 3;
+        const int b = (a + 1 + (((duoSeed_ / 3) % 2) + 2) % 2) % 3;
+        const int mine = lead ? a : b;
+        const int other = lead ? b : a;
+        const bool win = (mine - other + 3) % 3 == 1;
+        if (u < 1.8) {
+            const int k = static_cast<int>(u / 0.3);
+            nearClaw = k % 2 ? Claw::Up : Claw::Mid;
+            if (lead && k % 2 == 0 && counter_ != k + 1 && k < 6) {
+                counter_ = k + 1;
+                Spawn(static_cast<char>('1' + k / 2), mid - 1, kCrabY - 12, 0.0, -5.0, 0.5, kWhite);
+            }
+            break;
+        }
+        nearClaw = Claw::High;
+        if (u < 4.8) {
+            rpsSign_ = mine;
+        }
+        if (u < 2.6) {
+            break;
+        }
+        if (win) {
+            farClaw = Claw::High;
+            laugh(35.0);
+        } else {
+            pose_.eyes = Eyes::Closed;
+            pose_.body = Body::Crouch;
+            pose_.lookY = 1;
+            nearClaw = Claw::Down;
+            farClaw = Claw::Down;
+        }
+        break;
+    }
+
+    case Duo::Selfie: {
+        if (lead) {
+            pose_.tool = Tool::Phone;
+            pose_.toolSide = -d;
+            farClaw = Claw::High;
+        }
+        if (u < 0.5) {
+            break;
+        }
+        if (u < 2.0) {
+            pose_.lookX = 0;
+            pose_.lookY = -1;
+            pose_.eyes = Eyes::Happy;
+            if (!lead) {
+                nearClaw = Claw::High;
+                farClaw = Claw::High;
+            }
+            break;
+        }
+        if (u < 2.25) {
+            pose_.eyes = Eyes::Closed;
+            if (lead && phase_ == 0) {
+                phase_ = 1;
+                const int px = kCrabX + 8 - d * 10;
+                for (int i = 0; i < 10; ++i) {
+                    const double ang = 2.0 * kPi * i / 10.0;
+                    Spawn(i % 2 ? '*' : 'p', px, kCrabY - 6, std::cos(ang) * 22.0, std::sin(ang) * 16.0, 0.4, kWhite);
+                }
+            }
+            break;
+        }
+        if (u < 2.6) {
+            pose_.eyes = Eyes::Surprised;
+            break;
+        }
+        if (lead) {
+            farClaw = Claw::Up;
+            pose_.lookX = -d;
+        } else {
+            pose_.lookX = d;
+            relX_ = duoTo_ + d * 2.0 * s;
+        }
+        pose_.lookY = 1;
+        pose_.eyes = Eyes::Happy;
+        if (u > 3.4 && actFlag_ == 0) {
+            actFlag_ = 1;
+            Spawn('h', kCrabX + 5, kCrabY - 9, 0.0, -9.0, 1.2, kHeart);
+        }
+        break;
+    }
+
+    case Duo::Pair:
+        if (lead) {
+            if (u < 2.5 || (u > 4.0 && u < 6.0)) {
+                typeKeys(u > 4.0 ? 0.08 : 0.13);
+            } else {
+                pose_.keyboard = true;
+                pose_.lookY = 1;
+            }
+            if (u >= 2.5 && u < 6.0) {
+                bugIcon_ = 'g';
+                bugColor_ = kBugRed;
+            }
+            if (u >= 3.4 && u < 4.0) {
+                pose_.eyes = Eyes::Surprised;
+                if (actFlag_ == 0) {
+                    actFlag_ = 1;
+                    Spawn('?', kCrabX + 11, kCrabY - 8, 0.0, -6.0, 1.0, kWhite);
+                }
+            }
+            if (u >= 6.0) {
+                pose_.eyes = Eyes::Happy;
+                if (u < 8.6) {
+                    bugIcon_ = 'v';
+                    bugColor_ = kCheckGreen;
+                }
+            }
+            break;
+        }
+        pose_.lookY = 1;
+        if (u >= 2.5 && u < 3.6) {
+            nearClaw = (static_cast<int>(u / 0.15) % 2) ? Claw::High : Claw::Up;
+            pose_.eyes = Eyes::Surprised;
+            if (actFlag_ == 0) {
+                actFlag_ = 1;
+                Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -8.0, 0.9, kBugRed);
+            }
+        } else if (u >= 6.0) {
+            nearClaw = Claw::High;
+            laugh(30.0);
+        } else if (u >= 4.0) {
+            pose_.mouth = std::fmod(u, 0.6) < 0.3;
+            nearClaw = Claw::Up;
+        }
+        break;
+
+    case Duo::Pillow: {
+        if (u < 5.0) {
+            pose_.tool = Tool::Pillow;
+            pose_.toolSide = d;
+            const int k = static_cast<int>(u / 0.5);
+            const double c = std::fmod(u, 0.5);
+            const bool mine = (k % 2 == 0) == lead;
+            pose_.eyes = Eyes::Happy;
+            if (mine) {
+                nearClaw = c < 0.25 ? Claw::High : Claw::Mid;
+                if (c >= 0.25 && counter_ != k + 1) {
+                    counter_ = k + 1;
+                    for (int i = 0; i < 3; ++i) {
+                        Spawn('p', nearX + d * 7, kCrabY + RndI(-3, 2), Rnd(-8.0, 8.0) + d * 4.0, Rnd(-12.0, -4.0), 1.2,
+                              i % 2 ? kWhite : kDust, 10.0);
+                    }
+                }
+            } else {
+                nearClaw = Claw::Up;
+                if (c >= 0.25 && c < 0.4) {
+                    pose_.eyes = Eyes::Closed;
+                    shake_ = -d;
+                }
+            }
+            break;
+        }
+        pose_.body = Body::Squash;
+        pose_.legs = Legs::Spread;
+        nearClaw = Claw::Down;
+        farClaw = Claw::Down;
+        pose_.eyes = Eyes::Happy;
+        shake_ = (static_cast<int>(u / 0.1) % 2) ? 1 : 0;
+        if (lead) {
+            timerA_ -= dt;
+            if (timerA_ <= 0.0) {
+                timerA_ = 0.3;
+                Spawn('p', mid + RndI(-10, 10), kCrabY - 14, Rnd(-3.0, 3.0), 5.0, 2.0, kWhite);
+            }
+        }
+        break;
+    }
+
+    case Duo::Leapfrog: {
+        const double g = DuoGap(static_cast<int>(duo_));
+        const double start[4] = {0.4, 1.7, 3.0, 4.3};
+        const int who[4] = {0, 1, 1, 0};
+        const double from[4] = {0.0, 1.0, 3.0, 2.0};
+        const double to[4] = {2.0, 3.0, 1.0, 0.0};
+        double pos[2] = {0.0, 1.0};
+        double jump[2] = {-1.0, -1.0};
+        for (int i = 0; i < 4; ++i) {
+            const double q = (u - start[i]) / 0.8;
+            if (q >= 1.0) {
+                pos[who[i]] = to[i];
+            } else if (q >= 0.0) {
+                pos[who[i]] = Lerp(from[i], to[i], Smooth(q));
+                jump[who[i]] = q;
+            }
+        }
+        const int me = lead ? 0 : 1;
+        const int ot = 1 - me;
+        relX_ = duoTo_ + line * (pos[me] - me) * g * s;
+        if (std::abs(pos[ot] - pos[me]) > 0.05) {
+            pose_.lookX = (pos[ot] > pos[me] ? 1 : -1) * line;
+        }
+        if (jump[me] >= 0.0) {
+            lift_ = static_cast<int>(std::lround(13.0 * std::sin(kPi * jump[me])));
+            pose_.legs = Legs::Spread;
+            pose_.left = Claw::High;
+            pose_.right = Claw::High;
+            pose_.eyes = Eyes::Happy;
+        } else if (jump[ot] >= 0.0) {
+            pose_.body = Body::Crouch;
+            pose_.eyes = Eyes::Closed;
+        }
+        if (u > 5.2) {
+            laugh(30.0);
+        }
+        break;
+    }
+
+    case Duo::Mirror: {
+        static const Claw moves[8][2] = {{Claw::High, Claw::Mid}, {Claw::Mid, Claw::High}, {Claw::High, Claw::High},
+                                         {Claw::Up, Claw::Up},     {Claw::Mid, Claw::Mid},  {Claw::High, Claw::Down},
+                                         {Claw::Down, Claw::High}, {Claw::Up, Claw::Mid}};
+        const double v = u - (lead ? 0.0 : 0.3);
+        const int k = v < 0.3 ? -1 : static_cast<int>((v - 0.3) / 0.6);
+        if (k >= 0 && k < 8) {
+            const bool wrong = !lead && k == 6;
+            nearClaw = moves[k][wrong ? 1 : 0];
+            farClaw = moves[k][wrong ? 0 : 1];
+            if (k == 3) {
+                pose_.body = Body::Crouch;
+            }
+            if (wrong) {
+                pose_.eyes = Eyes::Sly;
+            }
+        }
+        if (lead && u >= 4.5 && u < 5.2) {
+            pose_.eyes = Eyes::Surprised;
+            if (actFlag_ == 0) {
+                actFlag_ = 1;
+                Spawn('?', kCrabX + 6, kCrabY - 9, 0.0, -6.0, 1.0, kWhite);
+            }
+        }
+        if (u >= 5.4) {
+            laugh(30.0);
+        }
+        break;
+    }
+
+    case Duo::Picnic: {
+        if (lead) {
+            duoBig_ = true;
+        }
+        const double off = lead ? 0.0 : 0.5;
+        int bitten = 0;
+        bool chewing = false;
+        for (double b : {1.2, 2.6, 4.0}) {
+            if (u >= b + off) {
+                ++bitten;
+                chewing = chewing || u < b + off + 0.4;
+            }
+        }
+        if (u < 5.0) {
+            pose_.tool = Tool::Sandwich;
+            pose_.toolSide = d;
+            pose_.toolLift = bitten;
+            nearClaw = chewing ? Claw::Up : Claw::Mid;
+            pose_.mouth = chewing && std::fmod(u, 0.2) < 0.1;
+            pose_.eyes = chewing ? Eyes::Happy : Eyes::Open;
+            break;
+        }
+        const double ant = AntOffset(u);
+        if (u >= 6.2 && u < 8.6 && ant > -900.0) {
+            const double myPos = (lead ? -1.0 : 1.0) * DuoGap(static_cast<int>(duo_)) / 2.0;
+            pose_.lookX = ant > myPos ? line : -line;
+            pose_.lookY = 1;
+            pose_.eyes = Eyes::Surprised;
+            if (actFlag_ == 0) {
+                actFlag_ = 1;
+                Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -7.0, 0.8, kBang);
+            }
+            break;
+        }
+        if (u >= 8.6) {
+            laugh(25.0);
+            shake_ = (static_cast<int>(u / 0.1) % 2) ? 1 : 0;
+        }
+        break;
+    }
+
+    case Duo::Chess: {
+        const int moves = (u >= 2.0 ? 1 : 0) + (u >= 4.0 ? 1 : 0) + (u >= 6.0 ? 1 : 0);
+        if (lead) {
+            duoBig_ = true;
+            duoLevel_ = moves;
+            duoFlame_ = u >= 7.2 ? 1 : 0;
+        }
+        pose_.lookY = 1;
+        const bool myTurn = lead ? (u < 2.4 || (u >= 4.4 && u < 6.4)) : (u >= 2.4 && u < 4.4);
+        const double moveAt = lead ? (u < 4.4 ? 2.0 : 6.0) : 4.0;
+        if (u < 7.0 && myTurn) {
+            if (u >= moveAt - 0.25 && u < moveAt + 0.2) {
+                nearClaw = u < moveAt ? Claw::High : Claw::Mid;
+            } else if (u < moveAt) {
+                const double w0 = moveAt - 1.6;
+                if (u > w0) {
+                    speech_ = kDots;
+                    speechChars_ = std::min(3, 1 + static_cast<int>((u - w0) / 0.3));
+                }
+                pose_.eyes = Eyes::Closed;
+            }
+            break;
+        }
+        if (u >= 7.0) {
+            if (lead) {
+                pose_.eyes = u >= 7.2 ? Eyes::Surprised : Eyes::Open;
+                if (u >= 7.2 && actFlag_ == 0) {
+                    actFlag_ = 1;
+                    for (int i = 0; i < 10; ++i) {
+                        Spawn('p', mid + RndI(-6, 5), kFeetRow - 10, Rnd(-18.0, 18.0), Rnd(-30.0, -15.0), 1.2,
+                              i % 2 ? kWhite : 0x2A2A2A, 60.0);
+                    }
+                    Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -7.0, 0.8, kBang);
+                }
+            } else {
+                pose_.eyes = Eyes::Sly;
+                nearClaw = u < 7.5 ? Claw::High : Claw::Up;
+            }
+        }
+        break;
+    }
+
+    case Duo::Seesaw: {
+        if (lead) {
+            duoBig_ = true;
+        }
+        const double tilt = SeesawTilt(u);
+        if (u < 0.6) {
+            lift_ = static_cast<int>(std::lround(7.0 * Smooth(u / 0.6)));
+            pose_.legs = Legs::Spread;
+            break;
+        }
+        if (!lead && u >= 5.6) {
+            duoDetached_ = true;
+            const double ft = u - 5.6;
+            lift_ = 11;
+            flyY_ = (0.5 * 500.0 * ft * ft + 160.0 * ft) * s;
+            pose_.eyes = Eyes::Surprised;
+            pose_.left = Claw::High;
+            pose_.right = Claw::High;
+            pose_.legs = Legs::Spread;
+            if (edge_ - flyY_ + (kCanvasH - kFeetRow) * s < GetSystemMetrics(SM_YVIRTUALSCREEN)) {
+                flyY_ = 0.0;
+                Hide();
+            }
+            break;
+        }
+        lift_ = static_cast<int>(std::lround(7.0 + (lead ? tilt : -tilt)));
+        pose_.eyes = Eyes::Happy;
+        if (u < 5.0) {
+            const bool up = (lead ? tilt : -tilt) > 1.5;
+            pose_.left = up ? Claw::High : Claw::Mid;
+            pose_.right = up ? Claw::High : Claw::Mid;
+            break;
+        }
+        if (lead) {
+            if (phase_ == 0) {
+                phase_ = 1;
+                hopV_ = 50.0;
+            }
+            if (u >= 5.6) {
+                duoDetached_ = true;
+                pose_.lookY = -1;
+                pose_.eyes = u < 7.0 ? Eyes::Surprised : Eyes::Happy;
+                if (actFlag_ == 0) {
+                    actFlag_ = 1;
+                    Puff(kCrabX + 8, kFeetRow - 7, 5, kDust);
+                    Spawn('!', kCrabX + 6, kCrabY - 20, 0.0, -7.0, 0.9, kBang);
+                }
+            }
+        } else {
+            pose_.eyes = Eyes::Surprised;
+        }
+        break;
+    }
+
+    case Duo::Deploy:
+        if (lead) {
+            duoBig_ = true;
+            duoLevel_ = u >= 1.5 ? 1 : 0;
+            duoFlame_ = u >= 2.2 ? 1 + static_cast<int>(u / 0.05) : 0;
+            if (u < 0.8) {
+                pose_.lookY = 1;
+                pose_.eyes = Eyes::Sly;
+                break;
+            }
+            if (u < 1.8) {
+                pose_.lookY = 1;
+                nearClaw = u < 1.4 ? Claw::High : Claw::Down;
+                pose_.eyes = Eyes::Happy;
+                break;
+            }
+            if (u < 2.2) {
+                pose_.eyes = Eyes::Happy;
+                break;
+            }
+            if (u < 7.4) {
+                pose_.eyes = Eyes::Surprised;
+                shake_ = (static_cast<int>(u / 0.06) % 2) ? 1 : -1;
+                pose_.lookX = (static_cast<int>(u / 0.25) % 2) ? d : -d;
+                nearClaw = (static_cast<int>(u / 0.15) % 2) ? Claw::High : Claw::Up;
+                farClaw = nearClaw == Claw::High ? Claw::Up : Claw::High;
+                if (actFlag_ == 0) {
+                    actFlag_ = 1;
+                    Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -8.0, 0.9, kBugRed);
+                }
+                timerA_ -= dt;
+                if (timerA_ <= 0.0) {
+                    timerA_ = 0.12;
+                    Spawn(Rnd() < 0.5 ? 'p' : 't', mid + RndI(-3, 3), kFeetRow - 12, Rnd(-5.0, 5.0), Rnd(-14.0, -6.0), 1.4,
+                          kSmoke, 0.0, 0.8);
+                    if (Rnd() < 0.3) {
+                        Spawn('*', mid + RndI(-4, 4), kFeetRow - 10, Rnd(-12.0, 12.0), Rnd(-14.0, -4.0), 0.4, kBang);
+                    }
+                }
+                break;
+            }
+            pose_.body = Body::Squash;
+            pose_.eyes = Eyes::Dizzy;
+            pose_.frame = static_cast<int>(u / 0.1);
+            break;
+        }
+        pose_.tool = Tool::Mug;
+        pose_.toolSide = -d;
+        pose_.lookX = 0;
+        pose_.eyes = Eyes::Closed;
+        if (std::fmod(u, 1.6) > 1.1) {
+            farClaw = Claw::Up;
+        }
+        if (u > 4.6 && u < 6.0) {
+            speech_ = kDots;
+            speechChars_ = std::min(3, 1 + static_cast<int>((u - 4.6) / 0.3));
+        }
+        break;
+
+    default:
+        break;
+    }
+}
+
+void Mate::StepTrio(double u, double dt)
+{
+    const int slot = duoSlot_;
+    const bool lead = duoLead_;
+    const int toward = slot == 0 ? 0 : -slot;
+    Claw& inClaw = toward >= 0 ? pose_.right : pose_.left;
+    const int mid = MidX();
+    if (lead) {
+        duoU_ = u;
+    }
+    auto typeKeys = [&](double period) {
+        const int k = static_cast<int>(u / period);
+        const bool down = std::fmod(u, period) < period * 0.6;
+        pose_.keyboard = true;
+        pose_.pressedKey = down ? (k % 2 == 0 ? 2 + (k * 3) % 6 : 8 + (k * 5) % 6) : -1;
+        pose_.left = (k % 2 == 0 && down) ? Claw::Down : Claw::Mid;
+        pose_.right = (k % 2 == 1 && down) ? Claw::Down : Claw::Mid;
+        pose_.lookY = 1;
+        if (down && counter_ != k && k % 3 == 0) {
+            counter_ = k;
+            Spawn(kCodeGlyphs[k % 9], kCrabX + 6 + k % 5, kCrabY - 6, Rnd(-4.0, 4.0), Rnd(-15.0, -9.0), 1.0, kCode);
+        }
+    };
+    auto laughAll = [&](double hop) {
+        pose_.eyes = Eyes::Happy;
+        if (phase_ < 9) {
+            phase_ = 9;
+            hopV_ = hop;
+            if (lead) {
+                Spawn('h', kCrabX + 5, kCrabY - 9, 0.0, -9.0, 1.2, kHeart);
+            }
+        }
+    };
+    pose_.lookX = toward;
+
+    switch (duo_) {
+    case Duo::Pyramid:
+        if (slot == 0) {
+            if (u < 0.7) {
+                lift_ = static_cast<int>(std::lround(10.0 * Smooth(u / 0.7) + 5.0 * std::sin(kPi * u / 0.7)));
+                pose_.legs = Legs::Spread;
+                pose_.left = Claw::High;
+                pose_.right = Claw::High;
+                break;
+            }
+            if (u < 3.6) {
+                lift_ = 10;
+                pose_.eyes = Eyes::Happy;
+                const bool a = static_cast<int>(u / 0.25) % 2 == 0;
+                pose_.left = a ? Claw::High : Claw::Up;
+                pose_.right = a ? Claw::Up : Claw::High;
+                if (phase_ == 0) {
+                    phase_ = 1;
+                    Spawn('h', kCrabX + 5, kCrabY - 19, 0.0, -9.0, 1.2, kHeart);
+                }
+                break;
+            }
+            if (u < 5.0) {
+                lift_ = 10;
+                shake_ = (static_cast<int>(u / (u < 4.3 ? 0.12 : 0.06)) % 2) ? 1 : -1;
+                pose_.eyes = Eyes::Surprised;
+                pose_.left = Claw::High;
+                pose_.right = Claw::High;
+                break;
+            }
+            if (u < 5.35) {
+                lift_ = static_cast<int>(std::lround(10.0 * (1.0 - Smooth((u - 5.0) / 0.35))));
+                pose_.eyes = Eyes::Surprised;
+                pose_.legs = Legs::Spread;
+                break;
+            }
+        } else {
+            if (u < 0.7) {
+                if (u > 0.3) {
+                    pose_.body = Body::Crouch;
+                }
+                break;
+            }
+            if (u < 3.6) {
+                pose_.eyes = Eyes::Closed;
+                pose_.left = Claw::High;
+                pose_.right = Claw::High;
+                shake_ = (static_cast<int>(u / 0.5) % 2) ? 0 : toward;
+                break;
+            }
+            if (u < 5.35) {
+                pose_.eyes = Eyes::Surprised;
+                pose_.left = Claw::High;
+                pose_.right = Claw::High;
+                shake_ = (static_cast<int>(u / 0.08) % 2) ? 1 : -1;
+                break;
+            }
+        }
+        if (phase_ < 2) {
+            phase_ = 2;
+            Puff(kCrabX + 8, kFeetRow - 2, 6, kDust);
+        }
+        if (u < 7.0) {
+            pose_.body = Body::Squash;
+            pose_.eyes = Eyes::Dizzy;
+            pose_.frame = static_cast<int>(u / 0.1);
+            pose_.legs = Legs::Spread;
+            break;
+        }
+        laughAll(25.0);
+        shake_ = (static_cast<int>(u / 0.1) % 2) ? 1 : 0;
+        break;
+
+    case Duo::Band: {
+        const double beat = 0.4;
+        const int b = static_cast<int>(u / beat);
+        const bool on = std::fmod(u, beat) < 0.12;
+        pose_.lookX = 0;
+        if (u >= 7.6) {
+            pose_.left = Claw::High;
+            pose_.right = Claw::High;
+            laughAll(35.0);
+            break;
+        }
+        if (on && b % 2 == 0) {
+            pose_.body = Body::Crouch;
+        }
+        if (slot == -1) {
+            pose_.tool = Tool::Guitar;
+            pose_.toolSide = 1;
+            pose_.toolLift = on ? 1 : 0;
+            pose_.right = on ? Claw::Down : Claw::Mid;
+            pose_.left = Claw::Up;
+            pose_.eyes = Eyes::Happy;
+        } else if (slot == 0) {
+            ownProp_ = 1 + (on ? (b % 2 ? 1 : 2) : 0);
+            pose_.left = (on && b % 2) ? Claw::High : Claw::Mid;
+            pose_.right = (on && b % 2 == 0) ? Claw::High : Claw::Mid;
+            pose_.eyes = Eyes::Closed;
+        } else {
+            pose_.tool = Tool::Mic;
+            pose_.toolSide = -1;
+            pose_.left = Claw::Up;
+            pose_.mouth = static_cast<int>(u / 0.2) % 2 == 0;
+            pose_.eyes = Eyes::Closed;
+            pose_.lookY = -1;
+        }
+        if (slot != 0) {
+            timerA_ -= dt;
+            if (timerA_ <= 0.0) {
+                timerA_ = Rnd(0.4, 0.8);
+                Spawn('n', kCrabX + RndI(0, 12), kCrabY - 4, Rnd(-6.0, 6.0), -12.0, 1.2, kNote);
+            }
+        }
+        break;
+    }
+
+    case Duo::Standup: {
+        if (lead) {
+            duoBig_ = true;
+            duoLevel_ = u >= 6.3 ? 4 : 3;
+        }
+        const double w0[3] = {0.5, 2.3, 4.1};
+        int speaker = -2;
+        for (int i = 0; i < 3; ++i) {
+            if (u >= w0[i] && u < w0[i] + 1.6) {
+                speaker = i - 1;
+            }
+        }
+        if (speaker != -2 && speaker != slot) {
+            pose_.lookX = speaker > slot ? 1 : -1;
+        }
+        if (speaker == slot && !(slot == -1 && u >= 4.4)) {
+            speech_ = kDots;
+            speechChars_ = std::min(3, 1 + static_cast<int>((u - w0[slot + 1]) / 0.3));
+            pose_.mouth = std::fmod(u, 0.24) < 0.12;
+            inClaw = (static_cast<int>(u / 0.3) % 2) ? Claw::Up : Claw::Mid;
+        }
+        if (slot == -1 && u >= 4.4 && u < 8.6) {
+            pose_.eyes = Eyes::Closed;
+            pose_.lookX = 0;
+            if (std::fmod(u, 1.0) < 0.3) {
+                pose_.body = Body::Crouch;
+            }
+            timerA_ -= dt;
+            if (timerA_ <= 0.0) {
+                timerA_ = 0.8;
+                Spawn('Z', kCrabX + 12, kCrabY - 2, 5.0, -7.0, 2.2, kWhite);
+            }
+        }
+        if (slot == -1 && u >= 8.6 && u < 9.2) {
+            pose_.eyes = Eyes::Surprised;
+            if (actFlag_ == 0) {
+                actFlag_ = 1;
+                Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -7.0, 0.8, kBang);
+            }
+        }
+        if (slot == 1 && u >= 5.9 && u < 6.7) {
+            pose_.lookX = -1;
+            pose_.lookY = -1;
+            pose_.left = u < 6.3 ? Claw::High : Claw::Up;
+        }
+        if (u >= 9.2) {
+            laughAll(20.0);
+        }
+        break;
+    }
+
+    case Duo::Ritual: {
+        if (u >= 0.3 && u < 8.6) {
+            pose_.robe = true;
+        }
+        if (slot == 0) {
+            lift_ = 5;
+            pose_.lookX = 0;
+        }
+        if (lead && u >= 0.3 && u < 8.6) {
+            duoBig_ = true;
+            duoLevel_ = static_cast<int>(std::clamp(40.0 + 40.0 * (u - 1.5), 40.0, 255.0));
+            if (u >= 5.5) {
+                duoFlame_ = static_cast<int>(std::clamp(255.0 * (u - 5.5) / 0.5, 0.0, 255.0));
+            }
+        }
+        if ((phase_ == 0 && u >= 0.2) || (phase_ == 1 && u >= 8.6)) {
+            ++phase_;
+            Puff(kCrabX + 8, kCrabY + 3, 6, kChant);
+        }
+        if (u < 1.5) {
+            break;
+        }
+        if (u < 5.5) {
+            const double c = std::fmod(u - 1.5, 1.2);
+            pose_.eyes = Eyes::Closed;
+            if (c < 0.6) {
+                pose_.left = Claw::High;
+                pose_.right = Claw::High;
+                pose_.lookY = -1;
+            } else {
+                pose_.body = Body::Crouch;
+                pose_.left = Claw::Down;
+                pose_.right = Claw::Down;
+                pose_.lookY = 1;
+            }
+            if (lead) {
+                timerA_ -= dt;
+                if (timerA_ <= 0.0) {
+                    timerA_ = 0.6;
+                    Spawn('n', mid + RndI(-8, 6), kFeetRow - 14, Rnd(-4.0, 4.0), -9.0, 1.4, kChant, 0.0, 0.9);
+                }
+            }
+            break;
+        }
+        if (u < 6.5) {
+            pose_.eyes = Eyes::Surprised;
+            pose_.left = Claw::High;
+            pose_.right = Claw::High;
+            pose_.lookY = -1;
+            break;
+        }
+        if (lead && actFlag_ == 0) {
+            actFlag_ = 1;
+            Spawn('?', mid - 1, kFeetRow - 46, 0.0, -4.0, 1.4, 0xFF4A4A);
+        }
+        if (u < 8.6) {
+            pose_.lookX = (static_cast<int>(u / 0.4 + slot) % 2) ? 1 : -1;
+            if (counter_ == 0 && u >= 7.0 + 0.2 * (slot + 1)) {
+                counter_ = 1;
+                Spawn('?', kCrabX + 6, kCrabY - 9 - (slot == 0 ? 5 : 0), 0.0, -6.0, 1.0, kWhite);
+            }
+            break;
+        }
+        laughAll(20.0);
+        break;
+    }
+
+    case Duo::Review:
+        if (slot == 0) {
+            if (u < 2.2) {
+                typeKeys(0.12);
+            } else {
+                pose_.keyboard = true;
+                pose_.lookY = 1;
+                pose_.lookX = (static_cast<int>(u / 0.8) % 2) ? 1 : -1;
+            }
+            if (u >= 4.8 && u < 7.6) {
+                pose_.eyes = Eyes::Surprised;
+                timerB_ -= dt;
+                if (timerB_ <= 0.0) {
+                    timerB_ = 0.7;
+                    Spawn('d', kCrabX + 14, kCrabY - 2, 3.0, 6.0, 0.6, kDrop);
+                }
+            }
+        } else {
+            pose_.lookY = 1;
+            if (slot == -1 && u >= 3.0 && u < 4.6) {
+                speech_ = kLgtm;
+                speechChars_ = static_cast<int>((u - 3.0) / 0.12);
+                pose_.eyes = Eyes::Happy;
+                inClaw = Claw::Up;
+            }
+            if (slot == 1 && u >= 4.6 && u < 7.6) {
+                bugIcon_ = '!';
+                bugColor_ = kBugRed;
+                pose_.eyes = u < 5.2 ? Eyes::Surprised : Eyes::Sly;
+                inClaw = Claw::High;
+                if (u >= 5.4 && u < 6.6) {
+                    speech_ = kDots;
+                    speechChars_ = std::min(3, 1 + static_cast<int>((u - 5.4) / 0.3));
+                }
+            }
+            if (slot == -1 && u >= 6.6) {
+                pose_.left = Claw::Up;
+                pose_.right = Claw::Up;
+                pose_.lookX = 1;
+                pose_.lookY = 0;
+            }
+        }
+        if (u >= 7.8) {
+            laughAll(20.0);
+        }
+        break;
+
+    case Duo::Conga: {
+        const int dir = duoMeet_ < (surfRect_.left + surfRect_.right) / 2.0 ? 1 : -1;
+        double o = 0.0;
+        int face = dir;
+        if (u >= 0.4 && u < 4.4) {
+            o = 24.0 * (u - 0.4) / 4.0;
+        } else if (u >= 4.4 && u < 4.8) {
+            o = 24.0;
+            face = u < 4.6 ? dir : -dir;
+        } else if (u >= 4.8 && u < 8.8) {
+            o = 24.0 - 24.0 * (u - 4.8) / 4.0;
+            face = -dir;
+        }
+        relX_ = duoTo_ + dir * o * scale_;
+        pose_.lookX = face;
+        if (u >= 0.4 && u < 8.8) {
+            const int b = static_cast<int>(u / 0.25);
+            pose_.legs = b % 2 ? Legs::LiftLeft : Legs::LiftRight;
+            shake_ = (static_cast<int>(u / 0.5) % 2) ? 1 : -1;
+            Claw& front = face > 0 ? pose_.right : pose_.left;
+            Claw& back = face > 0 ? pose_.left : pose_.right;
+            front = Claw::Up;
+            back = b % 4 == 3 ? Claw::High : Claw::Mid;
+            pose_.eyes = Eyes::Happy;
+            if (lead) {
+                timerA_ -= dt;
+                if (timerA_ <= 0.0) {
+                    timerA_ = 0.5;
+                    Spawn('n', kCrabX + RndI(0, 12), kCrabY - 6, Rnd(-6.0, 6.0), -12.0, 1.2, kNote);
+                }
+            }
+        } else if (u >= 8.8) {
+            laughAll(30.0);
+        }
+        break;
+    }
+
+    default:
+        break;
+    }
+}
+
+void Mate::DrawDuoBig(Canvas& c, int dx, int dy, int frame)
+{
+    const int d = duoSide_;
+    const double u = duoU_;
+    const int mid = MidX();
+    const int bottom = kFeetRow - 1;
+    switch (duo_) {
+    case Duo::Tug: {
+        const int lx = kCrabX + 8 + d * 8;
+        const int fx = kCrabX + 8 + d * static_cast<int>(std::lround(duoLive_ - 8.0));
+        if (u < 5.4) {
+            c.DrawRope(lx + dx, fx + dx, kCrabY + 4 + dy, 1);
+        } else {
+            c.DrawLine(lx + dx, kCrabY + 4 + dy, lx + d * 4 + dx, bottom + dy, 0xB8963E);
+            c.DrawRope(lx + d * 4 + dx, fx + dx, bottom + dy, 0);
+        }
+        break;
+    }
+    case Duo::Pong: {
+        c.DrawPongTable(mid + dx, bottom + dy);
+        const double v = u - 0.6;
+        if (v < 0.0 || v > 12 * 0.55 + 1.6) {
+            break;
+        }
+        const double lp = kCrabX + 8 + d * 12.0;
+        const double fp = kCrabX + 8 + d * (duoLive_ - 12.0);
+        double y = 0.0;
+        const double x = PongBallX(v, lp, fp, &y);
+        const int by = std::min(bottom - 1, static_cast<int>(std::lround(kCrabY - 3 + y)));
+        c.DrawGlyph('t', static_cast<int>(std::lround(x)) - 1 + dx, by - 1 + dy, kWhite, 255);
+        break;
+    }
+    case Duo::Picnic: {
+        const double ant = AntOffset(u);
+        const int antX = ant > -900.0 ? mid + d * static_cast<int>(std::lround(ant)) + dx : -999;
+        const int crumbX = (u >= 4.5 && u < 6.8) ? mid + d * 6 + dx : -999;
+        c.DrawPicnic(mid + dx, bottom + dy, antX, u >= 6.8 && u < 8.6, crumbX);
+        break;
+    }
+    case Duo::Chess:
+        c.DrawChess(mid + dx, bottom + dy, duoLevel_, duoFlame_ != 0);
+        break;
+    case Duo::Seesaw: {
+        const double lc = SeesawTilt(u) * 26.0 / 23.0;
+        const int tiltRight = static_cast<int>(std::lround(d > 0 ? -lc : lc));
+        c.DrawSeesaw(mid + dx, bottom + dy, 26, tiltRight);
+        break;
+    }
+    case Duo::Deploy:
+        c.DrawDeploy(mid + dx, bottom + dy, duoLevel_ != 0, duoFlame_);
+        break;
+    case Duo::Standup:
+        c.DrawBoard(mid + dx, bottom + dy, duoLevel_);
+        break;
+    case Duo::Ritual:
+        c.DrawAltar(mid + dx, bottom + dy, frame, duoLevel_);
+        c.DrawDemon(mid + dx, bottom - 40 + dy, duoFlame_);
+        break;
+    default:
+        break;
     }
 }

@@ -744,6 +744,377 @@ std::vector<Scene> Scenes()
             c.DrawGlyph('*', ox + 26, kFeetRow - 3, kWhite, 160);
         };
     }
+    {
+        Scene& sc = add("duo_tug");
+        sc.padX = 10;
+        sc.dx = -24;
+        sc.pose.lookX = 1;
+        sc.pose.legs = Legs::Spread;
+        sc.pose.eyes = Eyes::Closed;
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawRope(ox + 16, ox + 40, oy + 4, 1); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.legs = Legs::Spread;
+            c.DrawCrab(other, ox + 40, oy);
+            c.DrawGlyph('d', ox + 1, oy - 3, kDrop, 255);
+        };
+    }
+    {
+        Scene& sc = add("duo_pong");
+        sc.padX = 10;
+        sc.dx = -24;
+        sc.pose.lookX = 1;
+        sc.pose.tool = Tool::Paddle;
+        sc.pose.right = Claw::Up;
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawPongTable(ox + 30, oy + kCrabH - 1); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.tool = Tool::Paddle;
+            other.toolSide = -1;
+            other.left = Claw::Up;
+            c.DrawCrab(other, ox + 44, oy);
+            c.DrawGlyph('t', ox + 37, oy - 2, kWhite, 255);
+            c.DrawGlyph('p', ox + 34, oy, kWhite, 150);
+            c.DrawGlyph('p', ox + 31, oy - 5, kWhite, 110);
+            c.DrawGlyph('p', ox + 27, oy - 8, kWhite, 80);
+            c.DrawGlyph('p', ox + 22, oy - 7, kWhite, 50);
+        };
+    }
+    {
+        Scene& sc = add("duo_rps");
+        sc.dx = -12;
+        sc.pose.lookX = 1;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.right = Claw::High;
+        sc.pose.left = Claw::High;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.lookY = 1;
+            other.eyes = Eyes::Closed;
+            other.body = Body::Crouch;
+            other.left = Claw::Down;
+            other.right = Claw::Down;
+            c.DrawCrab(other, ox + 24, oy);
+            c.DrawSignBubble(ox + 8, oy - 1, 1);
+            c.DrawSignBubble(ox + 32, oy - 1, 0);
+        };
+    }
+    {
+        Scene& sc = add("duo_selfie");
+        sc.dx = -6;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.lookY = -1;
+        sc.pose.tool = Tool::Phone;
+        sc.pose.toolSide = -1;
+        sc.pose.left = Claw::High;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.eyes = Eyes::Happy;
+            other.lookY = -1;
+            other.left = Claw::High;
+            other.right = Claw::High;
+            c.DrawCrab(other, ox + 18, oy);
+            c.DrawGlyph('*', ox - 4, oy - 9, kWhite, 255);
+            c.DrawGlyph('p', ox - 6, oy - 11, kWhite, 220);
+            c.DrawGlyph('p', ox, oy - 11, kWhite, 220);
+        };
+    }
+    {
+        Scene& sc = add("duo_pair");
+        sc.dx = -10;
+        sc.pose.keyboard = true;
+        sc.pose.left = Claw::Down;
+        sc.pose.pressedKey = 4;
+        sc.pose.lookY = 1;
+        sc.pose.eyes = Eyes::Surprised;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.lookY = 1;
+            other.left = Claw::High;
+            c.DrawCrab(other, ox + 22, oy);
+            c.DrawGlyph('g', ox + 6, oy - 9, 0xE23B3B, 255);
+            c.DrawGlyph('!', ox + 28, oy - 9, 0xE23B3B, 255);
+            c.DrawGlyph('{', ox + 1, oy - 15, kCode, 200);
+            c.DrawGlyph(';', ox + 12, oy - 13, kCode, 200);
+        };
+    }
+    {
+        Scene& sc = add("duo_pillow");
+        sc.dx = -10;
+        sc.pose.lookX = 1;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.tool = Tool::Pillow;
+        sc.pose.right = Claw::High;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.eyes = Eyes::Closed;
+            other.tool = Tool::Pillow;
+            other.toolSide = -1;
+            other.left = Claw::Mid;
+            c.DrawCrab(other, ox + 23, oy);
+            c.DrawGlyph('p', ox + 18, oy - 8, kWhite, 255);
+            c.DrawGlyph('p', ox + 22, oy - 11, 0xCFC6B0, 255);
+            c.DrawGlyph('p', ox + 14, oy - 12, kWhite, 255);
+            c.DrawGlyph('p', ox + 25, oy - 6, kWhite, 255);
+        };
+    }
+    {
+        Scene& sc = add("duo_leapfrog");
+        sc.dx = -10;
+        sc.dy = -12;
+        sc.pose.lookX = 1;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.legs = Legs::Spread;
+        sc.pose.left = Claw::High;
+        sc.pose.right = Claw::High;
+        sc.back = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.body = Body::Crouch;
+            other.eyes = Eyes::Closed;
+            c.DrawCrab(other, ox + 12, oy + 12);
+        };
+    }
+    {
+        Scene& sc = add("duo_mirror");
+        sc.dx = -12;
+        sc.pose.lookX = 1;
+        sc.pose.right = Claw::High;
+        sc.pose.left = Claw::Down;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.left = Claw::High;
+            other.right = Claw::Down;
+            c.DrawCrab(other, ox + 26, oy);
+            for (int y = oy - 4; y <= oy + 9; y += 2) {
+                c.Put(ox + 20, y, 0xBFE4FF, 120);
+            }
+        };
+    }
+    {
+        Scene& sc = add("duo_picnic");
+        sc.padX = 12;
+        sc.dx = -26;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = 1;
+        sc.pose.eyes = Eyes::Surprised;
+        sc.pose.tool = Tool::Sandwich;
+        sc.pose.toolLift = 1;
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawPicnic(ox + 30, oy + kCrabH - 1, ox + 38, true, -999); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.lookY = 1;
+            other.eyes = Eyes::Surprised;
+            other.tool = Tool::Sandwich;
+            other.toolSide = -1;
+            other.toolLift = 2;
+            c.DrawCrab(other, ox + 44, oy);
+            c.DrawGlyph('!', ox + 35, oy - 6, kBang, 255);
+        };
+    }
+    {
+        Scene& sc = add("duo_chess");
+        sc.dx = -14;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = 1;
+        sc.pose.right = Claw::High;
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawChess(ox + 23, oy + kCrabH - 1, 1, false); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.lookX = -1;
+            other.lookY = 1;
+            other.eyes = Eyes::Closed;
+            c.DrawCrab(other, ox + 30, oy);
+            c.DrawSpeech(ox + 38, oy - 1, "...", 3);
+        };
+    }
+    {
+        Scene& sc = add("duo_seesaw");
+        sc.padX = 10;
+        sc.padTop = 6;
+        sc.dx = -24;
+        sc.noCrab = true;
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawSeesaw(ox + 31, oy + kCrabH - 1, 26, -5); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose a;
+            a.lookX = 1;
+            a.eyes = Eyes::Happy;
+            a.left = Claw::High;
+            a.right = Claw::High;
+            c.DrawCrab(a, ox + 3, oy - 11);
+            Pose b;
+            b.lookX = -1;
+            b.eyes = Eyes::Happy;
+            c.DrawCrab(b, ox + 45, oy - 2);
+        };
+    }
+    {
+        Scene& sc = add("duo_deploy");
+        sc.padX = 4;
+        sc.dx = -18;
+        sc.pose.lookX = 1;
+        sc.pose.eyes = Eyes::Surprised;
+        sc.pose.left = Claw::High;
+        sc.back = [](Canvas& c, int ox, int oy) {
+            c.DrawDeploy(ox + 25, oy + kCrabH - 1, true, 2);
+            c.DrawGlyph('t', ox + 24, oy - 6, 0xBDBDBD, 200);
+            c.DrawGlyph('p', ox + 27, oy - 9, 0xBDBDBD, 200);
+        };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose other;
+            other.eyes = Eyes::Closed;
+            other.tool = Tool::Mug;
+            other.toolSide = 1;
+            c.DrawCrab(other, ox + 34, oy);
+            c.DrawGlyph('!', ox + 6, oy - 9, 0xE23B3B, 255);
+        };
+    }
+    {
+        Scene& sc = add("trio_pyramid");
+        sc.dx = -8;
+        sc.noCrab = true;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose b;
+            b.eyes = Eyes::Closed;
+            b.left = Claw::High;
+            b.right = Claw::High;
+            b.lookX = 1;
+            c.DrawCrab(b, ox, oy);
+            b.lookX = -1;
+            c.DrawCrab(b, ox + 16, oy);
+            Pose t;
+            t.eyes = Eyes::Happy;
+            t.left = Claw::High;
+            t.right = Claw::Up;
+            c.DrawCrab(t, ox + 8, oy - 10);
+            c.DrawGlyph('h', ox + 13, oy - 20, kHeart, 255);
+        };
+    }
+    {
+        Scene& sc = add("trio_band");
+        sc.padX = 6;
+        sc.dx = -20;
+        sc.pose.tool = Tool::Guitar;
+        sc.pose.toolLift = 1;
+        sc.pose.right = Claw::Down;
+        sc.pose.left = Claw::Up;
+        sc.pose.eyes = Eyes::Happy;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose d;
+            d.eyes = Eyes::Closed;
+            d.left = Claw::High;
+            c.DrawCrab(d, ox + 22, oy);
+            c.DrawDrums(ox + 30, oy + kCrabH - 1, 1);
+            Pose m;
+            m.eyes = Eyes::Closed;
+            m.lookY = -1;
+            m.mouth = true;
+            m.tool = Tool::Mic;
+            m.toolSide = -1;
+            m.left = Claw::Up;
+            c.DrawCrab(m, ox + 44, oy);
+            c.DrawGlyph('n', ox + 4, oy - 12, kNote, 255);
+            c.DrawGlyph('n', ox + 50, oy - 14, kNote, 255);
+            c.DrawGlyph('n', ox + 40, oy - 9, kNote, 200);
+        };
+    }
+    {
+        Scene& sc = add("trio_standup");
+        sc.padX = 6;
+        sc.dx = -20;
+        sc.pose.eyes = Eyes::Closed;
+        sc.pose.body = Body::Crouch;
+        sc.back = [](Canvas& c, int ox, int oy) { c.DrawBoard(ox + 30, oy + kCrabH - 1, 4); };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose m;
+            m.mouth = true;
+            m.right = Claw::Up;
+            c.DrawCrab(m, ox + 22, oy);
+            Pose r;
+            r.lookX = -1;
+            c.DrawCrab(r, ox + 44, oy);
+            c.DrawSpeech(ox + 30, oy - 1, "...", 3);
+            c.DrawGlyph('Z', ox + 10, oy - 9, kWhite, 230);
+        };
+    }
+    {
+        Scene& sc = add("trio_ritual");
+        sc.padX = 10;
+        sc.padTop = 12;
+        sc.dx = -24;
+        sc.pose.robe = true;
+        sc.pose.eyes = Eyes::Surprised;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = -1;
+        sc.pose.left = Claw::High;
+        sc.pose.right = Claw::High;
+        sc.back = [](Canvas& c, int ox, int oy) {
+            c.DrawAltar(ox + 34, oy + kCrabH - 1, 10, 230);
+            c.DrawDemon(ox + 34, oy + kCrabH - 41, 255);
+        };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose p;
+            p.robe = true;
+            p.eyes = Eyes::Surprised;
+            p.lookY = -1;
+            p.left = Claw::High;
+            p.right = Claw::High;
+            c.DrawCrab(p, ox + 26, oy - 5);
+            p.lookX = -1;
+            c.DrawCrab(p, ox + 52, oy);
+            c.DrawGlyph('?', ox + 40, oy - 34, 0xFF4A4A, 255);
+        };
+    }
+    {
+        Scene& sc = add("trio_review");
+        sc.padX = 4;
+        sc.dx = -18;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = 1;
+        sc.pose.eyes = Eyes::Happy;
+        sc.pose.right = Claw::Up;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            Pose m;
+            m.keyboard = true;
+            m.lookY = 1;
+            m.eyes = Eyes::Surprised;
+            c.DrawCrab(m, ox + 20, oy);
+            Pose r;
+            r.lookX = -1;
+            r.lookY = 1;
+            r.eyes = Eyes::Sly;
+            r.left = Claw::High;
+            c.DrawCrab(r, ox + 40, oy);
+            c.DrawSpeech(ox + 8, oy - 1, "LGTM", 9);
+            c.DrawGlyph('!', ox + 46, oy - 9, 0xE23B3B, 255);
+            c.DrawGlyph('d', ox + 34, oy - 2, kDrop, 255);
+        };
+    }
+    {
+        Scene& sc = add("trio_conga");
+        sc.dx = -14;
+        sc.noCrab = true;
+        sc.front = [](Canvas& c, int ox, int oy) {
+            for (int i = 0; i < 3; ++i) {
+                Pose p;
+                p.lookX = 1;
+                p.eyes = Eyes::Happy;
+                p.legs = i % 2 ? Legs::LiftLeft : Legs::LiftRight;
+                p.right = Claw::Up;
+                p.left = i == 1 ? Claw::High : Claw::Mid;
+                c.DrawCrab(p, ox + i * 15 + (i % 2 ? 1 : 0), oy);
+            }
+            c.DrawGlyph('n', ox + 8, oy - 12, kNote, 255);
+            c.DrawGlyph('n', ox + 34, oy - 13, kNote, 220);
+        };
+    }
     return s;
 }
 

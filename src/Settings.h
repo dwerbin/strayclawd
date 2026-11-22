@@ -47,6 +47,24 @@ enum AnimId : int {
     kAnimDuoDance,
     kAnimDuoPray,
     kAnimDuoHighFive,
+    kAnimDuoTug,
+    kAnimDuoPong,
+    kAnimDuoRps,
+    kAnimDuoSelfie,
+    kAnimDuoPair,
+    kAnimDuoPillow,
+    kAnimDuoLeapfrog,
+    kAnimDuoMirror,
+    kAnimDuoPicnic,
+    kAnimDuoChess,
+    kAnimDuoSeesaw,
+    kAnimDuoDeploy,
+    kAnimTrioPyramid,
+    kAnimTrioBand,
+    kAnimTrioStandup,
+    kAnimTrioRitual,
+    kAnimTrioReview,
+    kAnimTrioConga,
     kAnimParachute,
     kAnimSidePeek,
     kAnimShy,
@@ -57,7 +75,8 @@ enum AnimId : int {
 };
 
 constexpr int kAnimFirstDuo = kAnimDuoLook;
-constexpr int kDuoCount = kAnimDuoHighFive - kAnimDuoLook + 1;
+constexpr int kDuoCount = kAnimTrioConga - kAnimDuoLook + 1;
+constexpr int kFirstTrio = kAnimTrioPyramid - kAnimDuoLook;
 
 /** One configurable animation: registry key, label, group, default weight and an optional note. */
 struct AnimInfo {

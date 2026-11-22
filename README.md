@@ -7,7 +7,7 @@
 StrayClawd is a free desktop pet (a screen mate, or virtual pet) for Windows 10 and 11, in
 the spirit of the old [Screen Mate Poo](https://github.com/lwu309/Scmpoo), eSheep and
 Shimeji: the small orange pixel crab of Claude appears at random from behind one of your
-windows, sits on its title bar, codes on a tiny laptop and does small cute things, then
+windows, sits on its title bar, types on a tiny keyboard and does small cute things, then
 hides again.
 
 <p align="center">
@@ -31,7 +31,9 @@ click its tray icon for the menu.
 - Drag and throw it; it lands on the next window below.
 - Run it several times for several crabs. When two crabs are close, they play together: talk,
   toast, cook, juggle, dance, high five, build a big rocket, fix a huge leaking bomb, fight
-  with light sabers, pray to Saint Algo...
+  with light sabers, pray to Saint Algo, tug of war, ping pong, chess, picnic, seesaw, deploy
+  on a Friday... Three crabs can build a pyramid, play in a band, hold a stand-up meeting,
+  review code or dance a conga.
 - Configure the chance of each animation, or turn it off.
 - Time of day and seasons: coffee in the morning, nightcap at night, Santa hat in December,
   witch hat at Halloween.
@@ -62,7 +64,8 @@ Tray icon (right click):
   wizard, Magic: grey wizard, Cook, Dizzy, Fishing, Reading, Juggling, Watering the plant,
   Fitness, Skateboard, Rain and rainbow, Coffee, Yawn, Rocket, Dusting, Sweeping,
   Yoga). "With another crab" starts a duo with the nearest crab on the same edge (up to about
-  400 px away); a "?" means no crab is there, or it is busy.
+  400 px away), or a trio ("Trio: ...") with the two nearest; a "?" means no crab is there,
+  or it is busy.
 - Type along with me / Today is a party day
 - Frequency: Rare (5-15 min), Normal (1-5 min), Often (20-60 s)
 - Pause
@@ -80,7 +83,7 @@ Settings are stored in `HKCU\Software\StrayClawd` (the animations in its `Animat
 
 - Peeks from behind the top edge of a window (or from behind its left/right side), looks
   around, sometimes gets shy and goes back, otherwise climbs out with a hop.
-- Then 4 to 8 activities: coding on a laptop (code glyphs pop up), walking along the edge,
+- Then 4 to 8 activities: typing on a keyboard (code glyphs pop up), walking along the edge,
   waving at the mouse, following the mouse with its eyes, dancing, sleeping (wakes up when
   the mouse comes close), thinking, sneezing.
 - Short special animations, picked at random among the activities:
@@ -163,12 +166,48 @@ walk to each other, then:
 - Pray to Saint Algo: occult robes with glowing eyes, an altar with candles and a floating
   golden `{ }`.
 - High five: they crouch, jump, and slap their claws together at the top of the jump.
+- Tug of war: a rope with a red mark, both pull and lean; then one crab yanks, the other
+  falls dizzy and the winner cheers.
+- Ping pong: a green table with a net, red paddles, the ball bounces on the table; about
+  twelve hits, then one crab misses and shows a "?".
+- Rock paper scissors: "1, 2, 3", each shows its sign in a bubble; the winner jumps, the
+  loser sulks.
+- Selfie: one crab holds up a phone, flash, then both look at the picture.
+- Pair programming: one types on its keyboard, a red bug shows up, the other points at it,
+  more typing, then a green check.
+- Pillow fight: pillows and feathers, then both lie on the ground laughing.
+- Leapfrog: they jump over each other along the edge, then come back.
+- Mirror: one moves its claws, the other copies it, until it gets one move wrong.
+- Picnic: a checked cloth, a basket, sandwiches eaten bite by bite, and an ant that steals
+  a crumb.
+- Chess: a small table and board, "..." while thinking, then one crab flips the board.
+- Seesaw: up and down on a plank; then one jumps hard and the other flies off the screen.
+- Deploy on Friday: one crab presses the big red button under a "DEPLOY" sign; alarm, smoke
+  and panic, while the other sips its mug.
+
+## Three crabs together
+
+When three crabs are on the same edge, the one that asks invites the two others. Both must
+accept, or nothing starts. Each crab gets a place in the row (left, middle, right) from where
+it stands.
+
+- Pyramid: two crabs at the bottom, the third climbs on their backs and waves; it wobbles,
+  and they all fall.
+- Band: guitar, drums and a singer with a microphone, notes in the air.
+- Stand-up meeting: a whiteboard with sticky notes, each one talks in turn, one falls asleep,
+  one adds a sticky note.
+- Saint Algo ritual: robes, the high priest stands on the altar, a red demon `{ }` shows up
+  and answers with a "?".
+- Code review: the one in the middle types on its keyboard; one says "LGTM", the other finds a
+  red "!".
+- Conga line: the three dance in a line along the edge, turn around and come back.
 
 The crabs find each other by their window class and talk with window messages (ask, accept,
-decline, end). The one that asks leads: it sends the meeting point and the walk time, and
-draws the shared props (pot, rocket, bomb, altar, sign, balls). The big rocket and the bomb
-do not fit in a crab window: the leader draws them in a second click-through window, kept
-just below both crabs. If one of them is dragged, clicked or hidden, the other stops too.
+decline, end). The one that asks leads: it sends the meeting point, the walk time (and for
+three crabs, each crab's place), and draws the shared props (pot, rocket, bomb, altar, sign,
+balls, rope, picnic, chess board, seesaw, button, bike, whiteboard). The big props do not fit
+in a crab window: the leader draws them in a second click-through window, kept just below
+the crabs. If one of them is dragged, clicked or hidden, the others stop too.
 
 ## How it works
 
@@ -189,7 +228,7 @@ Pure Win32 + GDI, C++20, no external library.
 <table>
   <tr>
     <td align="center"><img src="art/poses/peek.png" alt="Peek" width="168"><br>Peek</td>
-    <td align="center"><img src="art/poses/typing.png" alt="Coding on a laptop" width="168"><br>Coding</td>
+    <td align="center"><img src="art/poses/typing.png" alt="Typing" width="168"><br>Typing</td>
     <td align="center"><img src="art/poses/wave.png" alt="Wave" width="168"><br>Wave</td>
     <td align="center"><img src="art/poses/dance.png" alt="Dance" width="168"><br>Dance</td>
   </tr>
@@ -258,6 +297,38 @@ Pure Win32 + GDI, C++20, no external library.
   </tr>
   <tr>
     <td align="center" colspan="4"><img src="art/poses/duo_boom.png" alt="The bomb explodes: a comic BOOM" width="252"><br>Duo: this was not fine</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="art/poses/duo_rps.png" alt="Two crabs play rock paper scissors" width="168"><br>Duo: rock paper scissors</td>
+    <td align="center"><img src="art/poses/duo_selfie.png" alt="Two crabs take a selfie" width="168"><br>Duo: selfie</td>
+    <td align="center"><img src="art/poses/duo_pair.png" alt="Pair programming: a bug shows up" width="168"><br>Duo: pair programming</td>
+    <td align="center"><img src="art/poses/duo_pillow.png" alt="Two crabs in a pillow fight" width="168"><br>Duo: pillow fight</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="art/poses/duo_leapfrog.png" alt="A crab leaps over the other" width="168"><br>Duo: leapfrog</td>
+    <td align="center"><img src="art/poses/duo_mirror.png" alt="Two crabs play mirror" width="168"><br>Duo: mirror</td>
+    <td align="center"><img src="art/poses/duo_chess.png" alt="Two crabs play chess" width="168"><br>Duo: chess</td>
+    <td align="center"><img src="art/poses/trio_conga.png" alt="Three crabs in a conga line" width="168"><br>Trio: conga</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="art/poses/duo_tug.png" alt="Two crabs in a tug of war" width="228"><br>Duo: tug of war</td>
+    <td align="center" colspan="2"><img src="art/poses/duo_pong.png" alt="Two crabs play ping pong" width="228"><br>Duo: ping pong</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="art/poses/duo_picnic.png" alt="Two crabs have a picnic, an ant steals a crumb" width="240"><br>Duo: picnic</td>
+    <td align="center" colspan="2"><img src="art/poses/duo_seesaw.png" alt="Two crabs on a seesaw" width="228"><br>Duo: seesaw</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="4"><img src="art/poses/duo_deploy.png" alt="A crab presses the DEPLOY button on a Friday" width="192"><br>Duo: deploy on Friday</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="art/poses/trio_pyramid.png" alt="Three crabs make a pyramid" width="168"><br>Trio: pyramid</td>
+    <td align="center"><img src="art/poses/trio_band.png" alt="Three crabs play in a band" width="204"><br>Trio: band</td>
+    <td align="center"><img src="art/poses/trio_standup.png" alt="Three crabs in a stand-up meeting" width="204"><br>Trio: stand-up</td>
+    <td align="center"><img src="art/poses/trio_review.png" alt="Three crabs in a code review: LGTM" width="192"><br>Trio: code review</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="4"><img src="art/poses/trio_ritual.png" alt="Three cultist crabs summon a demon" width="228"><br>Trio: Saint Algo ritual</td>
   </tr>
 </table>
 
