@@ -14,6 +14,8 @@ constexpr uint32_t kKeyA = 0xBDBDBD;
 constexpr uint32_t kKeyB = 0x9A9A9A;
 constexpr uint32_t kKeyLit = 0xFFFFFF;
 constexpr uint32_t kKeyBase = 0x6E6E6E;
+constexpr uint32_t kGunWhite = 0xF7F7F4;
+constexpr uint32_t kGunBlack = 0x2B2B2E;
 constexpr uint32_t kScreenGlow = 0x8FD8FF;
 
 struct Glyph {
@@ -152,6 +154,20 @@ void Canvas::Resize(int logicalW, int logicalH, int scale)
 void Canvas::Clear()
 {
     std::fill(px_.begin(), px_.end(), 0u);
+}
+
+void Canvas::Erase(int x0, int y0, int x1, int y1)
+{
+    x0 = std::max(x0, 0);
+    y0 = std::max(y0, 0);
+    x1 = std::min(x1, lw_ - 1);
+    y1 = std::min(y1, lh_ - 1);
+    const int pw = PixelWidth();
+    for (int y = y0 * scale_; y < (y1 + 1) * scale_; ++y) {
+        for (int x = x0 * scale_; x < (x1 + 1) * scale_; ++x) {
+            px_[static_cast<size_t>(y) * pw + x] = 0u;
+        }
+    }
 }
 
 void Canvas::Put(int x, int y, uint32_t rgb, int alpha)
@@ -530,6 +546,26 @@ void Canvas::DrawCrab(const Pose& p, int ox, int oy)
             tp(x, r - 4, kMetal);
         }
         break;
+    case Tool::PortalGun: {
+        const char* gun[6] = {"......K.", "..WWW.K.", "WWWWSGK.", "KWWWWGGg", ".LLLKGK.", ".KK...K."};
+        for (int j = 0; j < 6; ++j) {
+            for (int i = 0; i < 8; ++i) {
+                const char ch = gun[j][i];
+                const int x = 15 + i;
+                const int y = r - 4 + j;
+                switch (ch) {
+                case 'W': tp(x, y, kGunWhite); break;
+                case 'S': tp(x, y, kRocketShade); break;
+                case 'L': tp(x, y, kMetal); break;
+                case 'K': tp(x, y, kGunBlack); break;
+                case 'G': tp(x, y, p.saberColor); break;
+                case 'g': tp(x, y, p.saberColor, 120); break;
+                default: break;
+                }
+            }
+        }
+        break;
+    }
     case Tool::Wrench:
         tp(15, r - 1, kChuteRed);
         tp(16, r - 2, kChuteRed);
@@ -1366,6 +1402,44 @@ void Canvas::DrawBomb(int cx, int bottom, int frame, int puddle)
     if (fall > 0) {
         Put(px, by + 10 + (frame / 2) % fall, kNeon);
         Put(px, by + 10 + (frame / 2 + fall / 2) % fall, kNeon, 200);
+    }
+}
+
+void Canvas::DrawPortal(int cx, int cy, double open, int kind, int frame)
+{
+    const uint32_t rim = kind == 0 ? 0xFF9A1F : 0x36C0F1;
+    const uint32_t glow = kind == 0 ? 0xFFE0A8 : 0xC8F0FF;
+    const uint32_t core = kind == 0 ? 0x4A2408 : 0x0B2E4A;
+    const double k = std::clamp(open, 0.0, 1.0);
+    const double hw = 9.0 * k;
+    const double hh = std::max(1.0, 3.0 * k);
+    if (hw < 1.0) {
+        return;
+    }
+    const int iw = static_cast<int>(hw) + 1;
+    const int ih = static_cast<int>(hh) + 1;
+    for (int dy = -ih; dy <= ih; ++dy) {
+        for (int dx = -iw; dx <= iw; ++dx) {
+            const double q = (dx * dx) / (hw * hw) + (dy * dy) / (hh * hh);
+            if (q > 1.0) {
+                if (q < 1.6) {
+                    Put(cx + dx, cy + dy, rim, 70);
+                }
+                continue;
+            }
+            uint32_t c = core;
+            if (q > 0.6) {
+                c = ((dx + frame / 2) % 3 == 0) ? glow : rim;
+            } else if (((dx * 3 + dy * 5 + frame) % 7 + 7) % 7 == 0) {
+                c = rim;
+            }
+            Put(cx + dx, cy + dy, c);
+        }
+    }
+    for (int i = 0; i < 3; ++i) {
+        const int sx = cx - iw + ((frame * 2 + i * 7) % (2 * iw + 1));
+        const int sy = cy - ih - 1 - ((frame + i * 3) % 4);
+        Put(sx, sy, glow, 150 - 30 * ((frame + i * 3) % 4));
     }
 }
 

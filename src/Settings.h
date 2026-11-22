@@ -33,6 +33,8 @@ enum AnimId : int {
     kAnimUmbrella,
     kAnimCoffee,
     kAnimYawn,
+    kAnimPortal,
+    kAnimClimb,
     kAnimDuoLook,
     kAnimDuoWave,
     kAnimDuoTalk,

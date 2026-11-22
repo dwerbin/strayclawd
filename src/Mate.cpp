@@ -363,46 +363,13 @@ void Mate::OnCommand(UINT id)
     case kCmdQuit:
         Shutdown();
         break;
-    case kCmdPlayPeek:
-        if (state_ == State::Hidden) {
-            Appear(false);
-        }
-        break;
-    case kCmdPlayParachute:
-        if (state_ != State::Parachute && state_ != State::Dragged) {
-            if (state_ != State::Hidden) {
-                Hide();
-            }
-            StartParachute();
-        }
-        break;
-    case kCmdPlayBuild: PlayAct(Act::Build); break;
-    case kCmdPlayPaint: PlayAct(Act::Paint); break;
-    case kCmdPlayMagic: PlayAct(Act::Magic); break;
-    case kCmdPlayWizard: PlayAct(Act::Wizard); break;
-    case kCmdPlayGreyWizard: PlayAct(Act::GreyWizard); break;
-    case kCmdPlayCook: PlayAct(Act::Cook); break;
-    case kCmdPlayDizzy: PlayAct(Act::Dizzy); break;
-    case kCmdPlayFish: PlayAct(Act::Fish); break;
-    case kCmdPlayRead: PlayAct(Act::Read); break;
-    case kCmdPlayJuggle: PlayAct(Act::Juggle); break;
-    case kCmdPlayWater: PlayAct(Act::Water); break;
-    case kCmdPlayFitness: PlayAct(Act::Fitness); break;
-    case kCmdPlaySkate: PlayAct(Act::Skate); break;
-    case kCmdPlayUmbrella: PlayAct(Act::Umbrella); break;
-    case kCmdPlayCoffee: PlayAct(Act::Coffee); break;
-    case kCmdPlayYawn: PlayAct(Act::Yawn); break;
-    case kCmdPlayRocket: PlayAct(Act::Rocket); break;
-    case kCmdPlayDust: PlayAct(Act::Dust); break;
-    case kCmdPlaySweep: PlayAct(Act::Sweep); break;
-    case kCmdPlayYoga: PlayAct(Act::Yoga); break;
     case kCmdFollowTyping:
         settings_.followTyping = !settings_.followTyping;
         settings_.Save();
         UpdateKeyboardHook();
         break;
     case kCmdConfigure:
-        if (RunConfigDialog(instance_, settings_)) {
+        if (RunConfigDialog(instance_, settings_, [this](int id) { TestAnimation(id); })) {
             settings_.SaveAnimations();
             BroadcastReload();
         }
@@ -416,14 +383,6 @@ void Mate::OnCommand(UINT id)
         break;
     }
     default:
-        if (id >= kCmdPlayDuo && id < kCmdPlayDuo + static_cast<UINT>(kDuoCount) && state_ == State::Active) {
-            if (TryDuo(static_cast<int>(id - kCmdPlayDuo))) {
-                BeginAct(Act::Sit);
-                actDur_ = std::max(actDur_, 1.5);
-            } else {
-                Spawn('?', kCrabX + 6, kCrabY - 8, 0.0, -6.0, 1.0, kWhite);
-            }
-        }
         break;
     }
 }
@@ -939,6 +898,7 @@ void Mate::NextActivity()
         {Act::Water, c.Weight(kAnimWater)}, {Act::Fitness, c.Weight(kAnimFitness)},
         {Act::Skate, c.Weight(kAnimSkate)}, {Act::Umbrella, c.Weight(kAnimUmbrella)},
         {Act::Coffee, morning ? c.Weight(kAnimCoffee) : 0}, {Act::Yawn, evening ? c.Weight(kAnimYawn) : 0},
+        {Act::Portal, c.Weight(kAnimPortal)}, {Act::Climb, c.Weight(kAnimClimb)},
     };
     int total = 0;
     for (const Weight& w : kTable) {
@@ -1070,7 +1030,29 @@ void Mate::BeginAct(Act a)
     case Act::Yawn: actDur_ = 3.5; break;
     case Act::Chase: actDur_ = 6.0; break;
     case Act::Duo: actDur_ = 1.0; break;
+    case Act::Portal:
+    case Act::Climb: {
+        const bool ok = a == Act::Portal ? FindPortalTarget() : FindClimbTarget();
+        if (!ok) {
+            act_ = Act::Sit;
+            actDur_ = Rnd(2.0, 4.0);
+            if (forcedAct_) {
+                Spawn('?', kCrabX + 6, kCrabY - 8, 0.0, -6.0, 1.0, kWhite);
+            }
+            break;
+        }
+        jumpFrom_ = relX_;
+        if (a == Act::Portal) {
+            jumpSide_ = SideWithRoom();
+            actDur_ = 5.4;
+        } else {
+            jumpWalk_ = std::clamp(std::abs(jumpTo_ - relX_) / (30.0 * s), 0.2, 10.0);
+            actDur_ = jumpWalk_ + 0.5 + 1.8 + 1.4;
+        }
+        break;
     }
+    }
+    forcedAct_ = false;
 }
 
 int Mate::SideWithRoom() const
@@ -1252,6 +1234,8 @@ void Mate::Tick(double dt)
     duoCount_ = 0;
     duoBalls_ = false;
     duoGone_ = false;
+    sink_ = 0;
+    portalX_ = -1;
     duoBig_ = false;
     rpsSign_ = -1;
     bugIcon_ = 0;
@@ -1879,6 +1863,8 @@ void Mate::StepActivity(double dt)
     case Act::Sweep: StepSweep(dt); break;
     case Act::Yoga: StepYoga(dt); break;
     case Act::Cook: StepCook(dt); break;
+    case Act::Portal: StepPortal(dt); break;
+    case Act::Climb: StepClimb(dt); break;
 
     case Act::Stare: {
         pose_.lookX = std::abs(dx) > 8.0 * s ? Sign(dx) : 0;
@@ -3103,7 +3089,7 @@ void Mate::Render()
     }
     canvas_.Clear();
     const int ox = kCrabX + shake_;
-    const int oy = kCrabY - static_cast<int>(std::lround(hop_)) - lift_;
+    const int oy = kCrabY - static_cast<int>(std::lround(hop_)) - lift_ + sink_;
     if (ladderH_ > 0) {
         canvas_.DrawLadder(kCrabX + 5, kCrabY + kCrabH - 1, ladderH_);
     }
@@ -3156,6 +3142,12 @@ void Mate::Render()
     if (!duoGone_) {
         canvas_.DrawCrab(pose_, ox, oy);
         RenderDuo(ox, oy, true);
+    }
+    if (sink_ > 0) {
+        canvas_.Erase(ox - 6, kFeetRow, ox + kCrabW + 6, kCanvasH - 1);
+    }
+    if (portalX_ >= 0) {
+        canvas_.DrawPortal(portalX_, kFeetRow, portalOpen_, portalKind_, static_cast<int>(clock_ / 0.05));
     }
     if (chuteFold_ == 0 || chuteFold_ == 1) {
         canvas_.DrawParachute(ox + 8, oy - 14, chuteFold_);
@@ -4469,6 +4461,7 @@ void Mate::RenderDuo(int ox, int oy, bool front)
 
 void Mate::HideProp()
 {
+    propTop_ = false;
     if (propShown_) {
         ShowWindow(prop_, SW_HIDE);
         propShown_ = false;
@@ -4477,7 +4470,7 @@ void Mate::HideProp()
 
 void Mate::RenderProp(POINT crabOrigin)
 {
-    if (!prop_ || (duoProp_ != 2 && duoProp_ != 4 && duoProp_ != 5 && !duoBig_)) {
+    if (!prop_ || (duoProp_ != 2 && duoProp_ != 4 && duoProp_ != 5 && duoProp_ != 6 && !duoBig_)) {
         HideProp();
         return;
     }
@@ -4504,6 +4497,29 @@ void Mate::RenderProp(POINT crabOrigin)
         return;
     }
     const int frame = static_cast<int>(clock_ / 0.05);
+    if (duoProp_ == 6) {
+        propCanvas_.Clear();
+        propCanvas_.DrawPortal(kPropCX, kPropBottom, portalFarOpen_, portalFarKind_, frame);
+        const int w = propCanvas_.PixelWidth();
+        const int h = propCanvas_.PixelHeight();
+        std::memcpy(propBits_, propCanvas_.Data(), static_cast<size_t>(w) * h * 4);
+        SIZE size{w, h};
+        POINT src{0, 0};
+        POINT dst{static_cast<LONG>(std::lround(portalFarX_)) - kPropCX * scale_,
+                  static_cast<LONG>(std::lround(portalFarY_)) - kPropBottom * scale_};
+        BLENDFUNCTION bf{AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+        UpdateLayeredWindow(prop_, nullptr, &dst, &size, propDc_, &src, 0, &bf, ULW_ALPHA);
+        if (!propTop_) {
+            SetWindowPos(prop_, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+            propTop_ = true;
+        }
+        if (!propShown_) {
+            ShowWindow(prop_, SW_SHOWNA);
+            propShown_ = true;
+        }
+        return;
+    }
+    propTop_ = false;
     const int dx = kPropCX - MidX();
     const int dy = kPropBottom - (kFeetRow - 1);
     propCanvas_.Clear();
@@ -5599,5 +5615,445 @@ void Mate::DrawDuoBig(Canvas& c, int dx, int dy, int frame)
         break;
     default:
         break;
+    }
+}
+
+namespace {
+
+constexpr uint32_t kPortalA = 0xFF9A1F;
+constexpr uint32_t kPortalB = 0x36C0F1;
+
+}
+
+bool Mate::FindPortalTarget()
+{
+    if (surface_ != Surface::Window && surface_ != Surface::Ground) {
+        return false;
+    }
+    const double s = scale_;
+    scanner_.Refresh();
+    const auto& wins = scanner_.Windows();
+    for (int pass = 0; pass < 2; ++pass) {
+        std::vector<size_t> order;
+        for (size_t i = 0; i < wins.size(); ++i) {
+            const RECT& r = wins[i].rect;
+            if (!wins[i].surface || wins[i].hwnd == surfHwnd_ || r.right - r.left < 60.0 * s) {
+                continue;
+            }
+            const bool high = r.top < edge_ - 40.0 * s;
+            const bool apart = r.right < footX_ - 80.0 * s || r.left > footX_ + 80.0 * s;
+            if (pass == 0 ? high : (apart && !high)) {
+                order.push_back(i);
+            }
+        }
+        std::shuffle(order.begin(), order.end(), rng_);
+        for (size_t idx : order) {
+            const RECT& r = wins[idx].rect;
+            MONITORINFO mi{};
+            mi.cbSize = sizeof(mi);
+            GetMonitorInfoW(MonitorFromRect(&r, MONITOR_DEFAULTTONEAREST), &mi);
+            if (r.top - 14.0 * s < mi.rcMonitor.top) {
+                continue;
+            }
+            for (int attempt = 0; attempt < 6; ++attempt) {
+                const int x = RndI(r.left + static_cast<int>(16.0 * s), r.right - static_cast<int>(16.0 * s));
+                POINT edge{x, r.top + 3};
+                POINT a{x - static_cast<LONG>(9.0 * s), r.top - static_cast<LONG>(8.0 * s)};
+                POINT b{x + static_cast<LONG>(9.0 * s), r.top - static_cast<LONG>(8.0 * s)};
+                if (scanner_.IsCovered(edge, idx) || scanner_.IsCovered(a, idx) || scanner_.IsCovered(b, idx) ||
+                    !Scanner::OnScreen(a) || !Scanner::OnScreen(b)) {
+                    continue;
+                }
+                jumpHwnd_ = wins[idx].hwnd;
+                jumpRect_ = r;
+                jumpX_ = x;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool Mate::FindClimbTarget()
+{
+    if (surface_ != Surface::Window && surface_ != Surface::Ground) {
+        return false;
+    }
+    const double s = scale_;
+    scanner_.Refresh();
+    const auto& wins = scanner_.Windows();
+    size_t self = wins.size();
+    for (size_t i = 0; i < wins.size(); ++i) {
+        if (surfHwnd_ && wins[i].hwnd == surfHwnd_) {
+            self = i;
+        }
+    }
+    bool found = false;
+    double best = 0.0;
+    for (size_t i = 0; i < wins.size(); ++i) {
+        const RECT& r = wins[i].rect;
+        if (!wins[i].surface || wins[i].hwnd == surfHwnd_ || r.right - r.left < 40.0 * s || r.bottom < edge_) {
+            continue;
+        }
+        const double h = edge_ - r.top;
+        if (h < 6.0 * s || h > 28.0 * s) {
+            continue;
+        }
+        MONITORINFO mi{};
+        mi.cbSize = sizeof(mi);
+        GetMonitorInfoW(MonitorFromRect(&r, MONITOR_DEFAULTTONEAREST), &mi);
+        if (r.top - kCrabH * s < mi.rcMonitor.top) {
+            continue;
+        }
+        for (int side : {1, -1}) {
+            const double wall = side > 0 ? r.left : r.right;
+            const double ax = wall - side * 9.0 * s;
+            const double land = wall + side * 10.0 * s;
+            if (ax < surfRect_.left + 10.0 * s || ax > surfRect_.right - 10.0 * s) {
+                continue;
+            }
+            if (self < wins.size()) {
+                POINT p{static_cast<LONG>(ax), static_cast<LONG>(edge_) + 2};
+                if (scanner_.IsCovered(p, self)) {
+                    continue;
+                }
+            }
+            POINT top{static_cast<LONG>(land), r.top + 2};
+            POINT head{static_cast<LONG>(land), r.top - static_cast<LONG>(6.0 * s)};
+            if (scanner_.IsCovered(top, i) || scanner_.IsCovered(head, i) || !Scanner::OnScreen(head)) {
+                continue;
+            }
+            const double dist = std::abs(ax - footX_);
+            if (!found || dist < best) {
+                found = true;
+                best = dist;
+                jumpHwnd_ = wins[i].hwnd;
+                jumpRect_ = r;
+                jumpSide_ = side;
+                jumpTo_ = ax - surfRect_.left;
+                jumpH_ = static_cast<int>(std::lround(h / s));
+            }
+        }
+    }
+    return found;
+}
+
+void Mate::MoveToWindow(double screenX)
+{
+    RECT r = jumpRect_;
+    Scanner::GetFrame(jumpHwnd_, &r);
+    surface_ = Surface::Window;
+    surfHwnd_ = jumpHwnd_;
+    surfRect_ = r;
+    side_ = 0;
+    edge_ = r.top;
+    relX_ = screenX - r.left;
+    overX_ = 0.0;
+    footX_ = screenX;
+    footY_ = edge_;
+    zTopDone_ = false;
+}
+
+void Mate::StepPortal(double dt)
+{
+    const double s = scale_;
+    const double t = actT_;
+    const int side = jumpSide_;
+    const int aim = jumpX_ >= footX_ ? 1 : -1;
+    if (t < 2.9 && !Scanner::IsAlive(jumpHwnd_)) {
+        actDur_ = actT_;
+        return;
+    }
+    pose_.tool = Tool::PortalGun;
+    pose_.saberColor = t < 1.1 ? kPortalB : kPortalA;
+    if (t < 0.5) {
+        pose_.toolSide = aim;
+        pose_.lookX = aim;
+        pose_.lookY = -1;
+        (aim > 0 ? pose_.right : pose_.left) = Claw::Up;
+        return;
+    }
+    if (t < 1.1) {
+        pose_.toolSide = aim;
+        pose_.lookX = aim;
+        pose_.lookY = -1;
+        (aim > 0 ? pose_.right : pose_.left) = Claw::High;
+        if (phase_ == 0) {
+            phase_ = 1;
+            shake_ = -aim;
+            for (int i = 0; i < 4; ++i) {
+                Spawn(i == 0 ? 's' : 'p', kCrabX + 8 + aim * 12, kCrabY - 8, aim * 40.0, -110.0 - i * 6.0, 0.6, kPortalB);
+            }
+        }
+    } else {
+        pose_.toolSide = side;
+        pose_.lookX = side;
+        pose_.lookY = 1;
+        (side > 0 ? pose_.right : pose_.left) = Claw::Mid;
+        if (phase_ == 1 && t >= 1.2) {
+            phase_ = 2;
+            shake_ = -side;
+            Spawn('s', kCrabX + 8 + side * 10, kCrabY - 2, side * 20.0, 30.0, 0.25, kPortalA);
+        }
+    }
+    if (t >= 0.7 && t < 2.9) {
+        duoProp_ = 6;
+        portalFarKind_ = 1;
+        portalFarX_ = jumpX_;
+        portalFarY_ = jumpRect_.top;
+        RECT r{};
+        if (Scanner::GetFrame(jumpHwnd_, &r)) {
+            portalFarX_ = jumpX_ + (r.left - jumpRect_.left);
+            portalFarY_ = r.top;
+        }
+        portalFarOpen_ = std::min(1.0, (t - 0.7) / 0.3);
+    }
+    const double moved = (relX_ - jumpFrom_) / s;
+    if (t >= 1.3 && t < 2.9) {
+        portalKind_ = 0;
+        portalOpen_ = std::min(1.0, (t - 1.3) / 0.3);
+        portalX_ = kCrabX + 8 + side * 14 - static_cast<int>(std::lround(moved));
+    }
+    if (t < 1.8) {
+        return;
+    }
+    if (t < 2.9) {
+        pose_.tool = Tool::None;
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+        if (t < 2.3) {
+            if (phase_ == 2) {
+                phase_ = 3;
+                hopV_ = 40.0;
+            }
+            relX_ = jumpFrom_ + side * 14.0 * s * Smooth((t - 1.8) / 0.5);
+            pose_.legs = Legs::Spread;
+            pose_.eyes = Eyes::Happy;
+            return;
+        }
+        relX_ = jumpFrom_ + side * 14.0 * s;
+        pose_.eyes = Eyes::Surprised;
+        sink_ = static_cast<int>(std::lround(13.0 * Smooth((t - 2.3) / 0.6)));
+        return;
+    }
+    if (phase_ < 4) {
+        phase_ = 4;
+        RECT r{};
+        if (!Scanner::GetFrame(jumpHwnd_, &r)) {
+            actDur_ = actT_;
+            return;
+        }
+        portalFarX_ = surfRect_.left + relX_;
+        portalFarY_ = edge_;
+        MoveToWindow(jumpX_ + (r.left - jumpRect_.left));
+        SetZ(ZMode::Above);
+        UpdateZ(true);
+    }
+    pose_.tool = Tool::None;
+    if (t < 3.3) {
+        duoProp_ = 6;
+        portalFarKind_ = 0;
+        portalFarOpen_ = 1.0 - (t - 2.9) / 0.4;
+    }
+    if (t < 3.9) {
+        portalKind_ = 1;
+        portalX_ = kCrabX + 8;
+        portalOpen_ = t < 3.5 ? 1.0 : 1.0 - (t - 3.5) / 0.4;
+    }
+    if (t < 3.5) {
+        sink_ = static_cast<int>(std::lround(13.0 * (1.0 - Smooth((t - 2.9) / 0.6))));
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+        pose_.eyes = Eyes::Happy;
+        return;
+    }
+    if (phase_ == 4) {
+        phase_ = 5;
+        hopV_ = 35.0;
+        Puff(kCrabX + 8, kFeetRow - 1, 5, kPortalB);
+    }
+    pose_.eyes = Eyes::Happy;
+    if (t < 4.6) {
+        pose_.tool = Tool::PortalGun;
+        pose_.toolSide = 1;
+        pose_.saberColor = kPortalA;
+        pose_.right = Claw::Up;
+        timerA_ -= dt;
+        if (timerA_ <= 0.0) {
+            timerA_ = 0.3;
+            Spawn('~', kCrabX + 20, kCrabY - 3, Rnd(-2.0, 2.0), -7.0, 0.8, kSteam, 0.0, 0.6);
+        }
+        return;
+    }
+    if (actFlag_ == 0) {
+        actFlag_ = 1;
+        Spawn('h', kCrabX + 5, kCrabY - 8, 0.0, -9.0, 1.2, kHeart);
+    }
+}
+
+void Mate::StepClimb(double dt)
+{
+    const double s = scale_;
+    const double t = actT_;
+    const int side = jumpSide_;
+    const double walkEnd = jumpWalk_;
+    const double climbStart = walkEnd + 0.5;
+    const double climbEnd = climbStart + 1.8;
+    if (t < climbEnd && !Scanner::IsAlive(jumpHwnd_)) {
+        actDur_ = actT_;
+        return;
+    }
+    if (t < walkEnd) {
+        relX_ = Lerp(jumpFrom_, jumpTo_, t / walkEnd);
+        if (std::abs(jumpTo_ - jumpFrom_) > 2.0 * s) {
+            const int ph = static_cast<int>(t / 0.11) % 4;
+            pose_.legs = ph == 1 ? Legs::LiftLeft : (ph == 3 ? Legs::LiftRight : Legs::Stand);
+            pose_.lookX = jumpTo_ >= jumpFrom_ ? 1 : -1;
+        }
+        return;
+    }
+    if (t < climbEnd) {
+        relX_ = jumpTo_;
+    }
+    pose_.lookX = side;
+    if (t < climbStart) {
+        pose_.lookY = -1;
+        if (t > climbStart - 0.2) {
+            pose_.body = Body::Crouch;
+        }
+        if (phase_ == 0) {
+            phase_ = 1;
+            Spawn('!', kCrabX + 6, kCrabY - 9, 0.0, -7.0, 0.7, kBang);
+        }
+        return;
+    }
+    if (t < climbEnd) {
+        SetZ(ZMode::Free);
+        const double k = (t - climbStart) / 1.8;
+        const double up = std::min(1.0, k / 0.75);
+        const double wiggle = 0.08 * std::sin(up * kPi * 6.0) * (1.0 - up);
+        lift_ = static_cast<int>(std::lround(jumpH_ * std::clamp(Smooth(up) + wiggle, 0.0, 1.0)));
+        overX_ = side * 19.0 * s * Smooth(std::clamp((k - 0.65) / 0.35, 0.0, 1.0));
+        const bool even = static_cast<int>(t / 0.18) % 2 == 0;
+        Claw& nearClaw = side > 0 ? pose_.right : pose_.left;
+        Claw& farClaw = side > 0 ? pose_.left : pose_.right;
+        nearClaw = even ? Claw::High : Claw::Up;
+        farClaw = even ? Claw::Up : Claw::High;
+        pose_.legs = even ? Legs::LiftLeft : Legs::LiftRight;
+        pose_.eyes = k < 0.7 && even ? Eyes::Closed : Eyes::Open;
+        pose_.lookY = -1;
+        if (k > 0.3 && actFlag_ == 0) {
+            actFlag_ = 1;
+            Spawn('d', kCrabX + (side > 0 ? -1 : 15), kCrabY - 3 - lift_, -side * 3.0, 6.0, 0.6, kDrop);
+        }
+        timerA_ -= dt;
+        if (timerA_ <= 0.0 && k < 0.7) {
+            timerA_ = 0.25;
+            Spawn('p', kCrabX + 8 + side * 9, kFeetRow - 2 - lift_ / 2, -side * 4.0, 4.0, 0.4, kDust, 0.0, 0.8);
+        }
+        return;
+    }
+    if (phase_ < 2) {
+        phase_ = 2;
+        RECT r{};
+        if (!Scanner::GetFrame(jumpHwnd_, &r)) {
+            actDur_ = actT_;
+            return;
+        }
+        const double x = surfRect_.left + relX_ + overX_;
+        jumpRect_ = r;
+        MoveToWindow(x);
+        SetZ(ZMode::Above);
+        UpdateZ(true);
+        hopV_ = 32.0;
+        Puff(kCrabX + 8, kFeetRow - 1, 4, kWhite);
+    }
+    pose_.eyes = Eyes::Happy;
+    const double u = t - climbEnd;
+    if (u < 0.6) {
+        pose_.left = Claw::High;
+        pose_.right = Claw::High;
+        return;
+    }
+    (side > 0 ? pose_.left : pose_.right) = std::fmod(u, 0.3) < 0.15 ? Claw::Up : Claw::High;
+    if (actFlag_ < 2) {
+        actFlag_ = 2;
+        Spawn('h', kCrabX + 5, kCrabY - 8, 0.0, -9.0, 1.2, kHeart);
+    }
+}
+
+void Mate::TestAnimation(int id)
+{
+    auto fail = [this]() {
+        if (state_ == State::Hidden) {
+            Appear(false);
+        } else {
+            Spawn('?', kCrabX + 6, kCrabY - 8, 0.0, -6.0, 1.0, kWhite);
+        }
+    };
+    if (id >= kAnimFirstDuo && id < kAnimFirstDuo + kDuoCount) {
+        if (state_ == State::Active && TryDuo(id - kAnimFirstDuo)) {
+            BeginAct(Act::Sit);
+            actDur_ = std::max(actDur_, 1.5);
+        } else {
+            fail();
+        }
+        return;
+    }
+    switch (id) {
+    case kAnimParachute:
+        if (state_ != State::Parachute && state_ != State::Dragged) {
+            if (state_ != State::Hidden) {
+                Hide();
+            }
+            StartParachute();
+        }
+        return;
+    case kAnimSidePeek:
+    case kAnimShy:
+        if (state_ == State::Dragged) {
+            return;
+        }
+        if (state_ != State::Hidden) {
+            Hide();
+        }
+        if (id == kAnimSidePeek) {
+            scanner_.Refresh();
+            particles_.clear();
+            if (PickSideSpot()) {
+                Enter(State::SidePeek);
+                Show();
+                return;
+            }
+        }
+        Appear(false);
+        shy_ = id == kAnimShy;
+        return;
+    case kAnimStare:
+        PlayAct(Act::Stare);
+        return;
+    case kAnimChase:
+        PlayAct(Act::Chase);
+        return;
+    case kAnimDuoChance:
+        if (state_ == State::Active && TryDuo(-1)) {
+            BeginAct(Act::Sit);
+            actDur_ = std::max(actDur_, 1.5);
+        } else {
+            fail();
+        }
+        return;
+    default:
+        break;
+    }
+    static const Act kActs[] = {Act::Typing, Act::Walk, Act::Wave, Act::Look, Act::Dance, Act::Sleep,
+                                Act::Think, Act::Sneeze, Act::Sit, Act::Build, Act::Paint, Act::Magic,
+                                Act::Cook, Act::Wizard, Act::GreyWizard, Act::Rocket, Act::Dust, Act::Sweep,
+                                Act::Yoga, Act::Fish, Act::Read, Act::Juggle, Act::Water, Act::Fitness,
+                                Act::Skate, Act::Umbrella, Act::Coffee, Act::Yawn, Act::Portal, Act::Climb};
+    static_assert(sizeof(kActs) / sizeof(kActs[0]) == kAnimClimb + 1, "one act per activity row");
+    if (id >= 0 && id <= kAnimClimb) {
+        forcedAct_ = true;
+        PlayAct(kActs[id]);
     }
 }

@@ -21,6 +21,7 @@ enum ControlId : int {
     kIdEnableAll,
     kIdDisableAll,
     kIdReset,
+    kIdTest,
 };
 
 enum Column : int { kColName, kColGroup, kColWeight, kColChance, kColNote };
@@ -32,6 +33,8 @@ struct State {
     HWND label = nullptr;
     HWND slider = nullptr;
     HWND value = nullptr;
+    HWND test = nullptr;
+    const std::function<void(int)>* play = nullptr;
     HFONT font = nullptr;
     int dpi = 96;
     bool filling = false;
@@ -85,6 +88,7 @@ void RefreshSlider(State& st)
     const int first = ListView_GetNextItem(st.list, -1, LVNI_SELECTED);
     const int count = ListView_GetSelectedCount(st.list);
     EnableWindow(st.slider, first >= 0);
+    EnableWindow(st.test, count == 1);
     if (first < 0) {
         SetWindowTextW(st.label, L"Select one or more rows to set their weight.");
         SetWindowTextW(st.value, L"");
@@ -125,7 +129,7 @@ void CreateControls(State& st)
     AddControl(st, L"STATIC",
                L"Check a row to enable it. Select one or more rows, then move the slider to set their weight. "
                L"Activities and duos: the chance is the weight divided by the total of the enabled rows of the "
-               L"group. Events: the value is a percent.",
+               L"group. Events: the value is a percent. Test (or a double click) plays the selected row now.",
                0, kIdHelp, 12, 10, 556, 48);
     st.list = AddControl(st, WC_LISTVIEWW, L"", WS_BORDER | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS, kIdList, 12, 62,
                          556, 400);
@@ -159,6 +163,7 @@ void CreateControls(State& st)
     AddControl(st, L"BUTTON", L"Enable all", WS_TABSTOP | BS_PUSHBUTTON, kIdEnableAll, 12, 544, 90, 28);
     AddControl(st, L"BUTTON", L"Disable all", WS_TABSTOP | BS_PUSHBUTTON, kIdDisableAll, 108, 544, 90, 28);
     AddControl(st, L"BUTTON", L"Reset defaults", WS_TABSTOP | BS_PUSHBUTTON, kIdReset, 204, 544, 110, 28);
+    st.test = AddControl(st, L"BUTTON", L"Test", WS_TABSTOP | BS_PUSHBUTTON, kIdTest, 320, 544, 66, 28);
     AddControl(st, L"BUTTON", L"OK", WS_TABSTOP | BS_DEFPUSHBUTTON, IDOK, 392, 544, 85, 28);
     AddControl(st, L"BUTTON", L"Cancel", WS_TABSTOP | BS_PUSHBUTTON, IDCANCEL, 483, 544, 85, 28);
     FillChecks(st);
@@ -192,6 +197,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         return 0;
     case WM_NOTIFY: {
         const auto* hdr = reinterpret_cast<const NMHDR*>(lp);
+        if (hdr->idFrom == kIdList && hdr->code == NM_DBLCLK) {
+            const auto* ia = reinterpret_cast<const NMITEMACTIVATE*>(lp);
+            if (ia->iItem >= 0 && st->play && *st->play) {
+                (*st->play)(ia->iItem);
+            }
+            return 0;
+        }
         if (hdr->idFrom == kIdList && hdr->code == LVN_ITEMCHANGED) {
             const auto* nm = reinterpret_cast<const NMLISTVIEW*>(lp);
             if ((nm->uChanged & LVIF_STATE) == 0 || nm->iItem < 0) {
@@ -232,6 +244,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             st->edit.ResetAnimations();
             FillChecks(*st);
             break;
+        case kIdTest: {
+            const int row = ListView_GetNextItem(st->list, -1, LVNI_SELECTED);
+            if (row >= 0 && st->play && *st->play) {
+                (*st->play)(row);
+            }
+            SetFocus(st->list);
+            break;
+        }
         default:
             break;
         }
@@ -247,7 +267,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 
 }
 
-bool RunConfigDialog(HINSTANCE instance, Settings& settings)
+bool RunConfigDialog(HINSTANCE instance, Settings& settings, const std::function<void(int)>& test)
 {
     if (g_open) {
         SetForegroundWindow(g_open);
@@ -273,6 +293,7 @@ bool RunConfigDialog(HINSTANCE instance, Settings& settings)
 
     State st;
     st.edit = settings;
+    st.play = &test;
     POINT cursor{};
     GetCursorPos(&cursor);
     HMONITOR mon = MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);

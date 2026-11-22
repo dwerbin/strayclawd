@@ -550,6 +550,48 @@ std::vector<Scene> Scenes()
         };
     }
     {
+        Scene& sc = add("portal");
+        sc.dx = -8;
+        sc.pose.tool = Tool::PortalGun;
+        sc.pose.saberColor = 0xFF9A1F;
+        sc.pose.toolSide = 1;
+        sc.pose.right = Claw::Mid;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = 1;
+        sc.front = [](Canvas& c, int ox, int) {
+            c.DrawPortal(ox + 28, kFeetRow, 1.0, 0, 3);
+            c.DrawGlyph('s', ox + 25, kCrabY + 3, 0xFF9A1F, 230);
+            c.DrawPortal(ox + 34, kTop + 6, 0.8, 1, 5);
+            c.DrawGlyph('p', ox + 26, kTop + 12, 0x36C0F1, 200);
+            c.DrawGlyph('p', ox + 22, kTop + 20, 0x36C0F1, 140);
+        };
+    }
+    {
+        Scene& sc = add("climb");
+        sc.dx = -6;
+        sc.dy = -10;
+        sc.pose.eyes = Eyes::Closed;
+        sc.pose.lookX = 1;
+        sc.pose.lookY = -1;
+        sc.pose.right = Claw::High;
+        sc.pose.left = Claw::Up;
+        sc.pose.legs = Legs::LiftLeft;
+        sc.back = [](Canvas& c, int ox, int) {
+            const int x0 = ox + 16;
+            const int top = kFeetRow - 12;
+            for (int y = top; y < kH; ++y) {
+                for (int x = x0; x < kW; ++x) {
+                    const uint32_t col = y == top ? kTitleEdge : (y < top + 5 ? kTitleBar : 0x5A4A70);
+                    c.Put(x, y, col);
+                }
+            }
+        };
+        sc.front = [](Canvas& c, int ox, int oy) {
+            c.DrawGlyph('d', ox - 1, oy - 3, kDrop, 255);
+            c.DrawGlyph('p', ox + 14, kFeetRow - 3, 0xCFC6B0, 200);
+        };
+    }
+    {
         Scene& sc = add("duo_talk");
         sc.dx = -13;
         sc.pose.lookX = 1;

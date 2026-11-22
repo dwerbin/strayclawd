@@ -9,7 +9,7 @@ enum class Claw { High, Up, Mid, Down };
 enum class Legs { Stand, LiftLeft, LiftRight, Spread };
 enum class Body { Normal, Crouch, Squash };
 enum class Hat { None, HardHat, Beret, TopHat, Toque, Nightcap, Santa, Witch, Party, Wizard, Headband };
-enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff, Duster, Broom, Saber, Wrench,
+enum class Tool { None, Hammer, Brush, Wand, Pan, Rod, Mug, Can, Umbrella, Staff, Duster, Broom, Saber, Wrench, PortalGun,
                   Paddle, Phone, Pillow, Sandwich, Guitar, Mic };
 
 constexpr int kNoBarbell = -99;
@@ -74,6 +74,8 @@ public:
     void DrawPot(int cx, int bottom, int frame);
     void DrawBomb(int cx, int bottom, int frame, int puddle);
     void DrawExplosion(int cx, int bottom, double t);
+    void DrawPortal(int cx, int cy, double open, int kind, int frame);
+    void Erase(int x0, int y0, int x1, int y1);
     void DrawAltar(int cx, int bottom, int frame, int glow);
     void DrawSpeech(int cx, int bottom, const char* text, int visible);
     void DrawSignBubble(int cx, int bottom, int sign);

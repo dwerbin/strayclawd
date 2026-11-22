@@ -25,8 +25,8 @@ click its tray icon for the menu.
 - Lives on your window title bars and on the taskbar; follows a window when you move it and
   falls when it closes.
 - More than 30 animations: typing, dancing, sleeping, DIY, painter, wizards, cooking,
-  fishing, juggling, a plant that grows and explodes, skateboard, rocket, yoga, cleaning and
-  more (see the [gallery](#gallery)).
+  fishing, juggling, a plant that grows and explodes, skateboard, rocket, yoga, cleaning, a
+  portal gun, climbing onto a higher window and more (see the [gallery](#gallery)).
 - Reacts to the mouse: stares at the cursor, chases it, waves at it, gets dizzy.
 - Drag and throw it; it lands on the next window below.
 - Run it several times for several crabs. When two crabs are close, they play together: talk,
@@ -60,12 +60,6 @@ another crab as a surface.
 Tray icon (right click):
 
 - Show now / Hide
-- Play: start an animation now (Peek, Parachute, DIY on a ladder, Paint, Magic, Magic: young
-  wizard, Magic: grey wizard, Cook, Dizzy, Fishing, Reading, Juggling, Watering the plant,
-  Fitness, Skateboard, Rain and rainbow, Coffee, Yawn, Rocket, Dusting, Sweeping,
-  Yoga). "With another crab" starts a duo with the nearest crab on the same edge (up to about
-  400 px away), or a trio ("Trio: ...") with the two nearest; a "?" means no crab is there,
-  or it is busy.
 - Type along with me / Today is a party day
 - Frequency: Rare (5-15 min), Normal (1-5 min), Often (20-60 s)
 - Pause
@@ -74,6 +68,9 @@ Tray icon (right click):
   rows and move the slider to set their weight. Activities and duos: the chance of a row is
   its weight divided by the total of its group. Events (parachute, side peek, shy peek,
   stare, chase, duo) are a percent. OK saves and updates all the running crabs.
+  Test (or a double click on a row) plays that animation now, without closing the dialog.
+  A duo or trio starts with the nearest crabs on the same edge (up to about 400 px away); a
+  "?" means no crab is there or it is busy, or (portal gun, climb) that no window fits.
 - Quit
 
 Double click on the tray icon = Show now. Right click on the crab opens the same menu.
@@ -117,6 +114,12 @@ Settings are stored in `HKCU\Software\StrayClawd` (the animations in its `Animat
   - Yoga: he unrolls a mat and puts on a headband; arms up while breathing, the tree pose
     (he almost loses his balance), the warrior pose, then he floats above the mat in a lotus
     pose. He greets you with a heart and rolls the mat up.
+  - Portal gun (white, with three black prongs and a glowing core): he aims at the top of
+    another window out of reach (higher up, or far away) and shoots a blue portal there, then
+    an orange portal on the edge next to him. He jumps into the orange one, comes out of the
+    blue one on the other window, and blows on his gun.
+  - Climb: when a window just a bit higher (6 to 28 px of crab art) stands next to his edge,
+    he walks to its side, climbs it with a lot of effort and stands on top.
 - Time of day: coffee in the morning (6-11 h), yawns after lunch and in the evening, more
   sleep and a nightcap at night (21-6 h).
 - Seasons: Santa hat, white beard and snow in December, witch hat from 24 to 31 October, party hat and
@@ -279,6 +282,10 @@ Pure Win32 + GDI, C++20, no external library.
     <td align="center"><img src="art/poses/santa.png" alt="December" width="168"><br>December</td>
     <td align="center"><img src="art/poses/witch.png" alt="Halloween" width="168"><br>Halloween</td>
     <td align="center"><img src="art/poses/party.png" alt="Party day" width="168"><br>Party day</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="art/poses/portal.png" alt="Portal gun: two portals" width="168"><br>Portal gun</td>
+    <td align="center"><img src="art/poses/climb.png" alt="Climbing onto a higher window" width="168"><br>Climb</td>
   </tr>
   <tr>
     <td align="center"><img src="art/poses/duo_talk.png" alt="Two crabs talking" width="168"><br>Duo: talk</td>

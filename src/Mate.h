@@ -31,7 +31,7 @@ private:
     enum class Act { Sit, Typing, Walk, Wave, Look, Dance, Sleep, Think, Sneeze, React,
                      Build, Paint, Magic, Cook, Stare, Dizzy,
                      Fish, Read, Juggle, Water, Fitness, Skate, Umbrella, Coffee, Yawn, Chase,
-                     Wizard, GreyWizard, Rocket, Dust, Sweep, Yoga, Duo };
+                     Wizard, GreyWizard, Rocket, Dust, Sweep, Yoga, Portal, Climb, Duo };
     enum class Duo { Look, Wave, Talk, Juggle, Cook, Rocket, Bomb, Toast, Scheme, Saber, Boost, Dance, Pray, HighFive,
                      Tug, Pong, Rps, Selfie, Pair, Pillow, Leapfrog, Mirror, Picnic, Chess, Seesaw, Deploy,
                      Pyramid, Band, Standup, Ritual, Review, Conga };
@@ -104,6 +104,12 @@ private:
     void StepCoffee(double dt);
     void StepYawn(double dt);
     void StepChase(double dt);
+    void StepPortal(double dt);
+    void StepClimb(double dt);
+    bool FindPortalTarget();
+    bool FindClimbTarget();
+    void MoveToWindow(double screenX);
+    void TestAnimation(int id);
     void ApplySeason(double dt);
     static bool IsCrab(HWND hwnd);
     bool PeerFoot(HWND peer, double* x, double* y) const;
@@ -319,5 +325,24 @@ private:
     void* propBits_ = nullptr;
     int propScale_ = 0;
     bool propShown_ = false;
+    bool propTop_ = false;
+
+    bool forcedAct_ = false;
+    HWND jumpHwnd_ = nullptr;
+    RECT jumpRect_{};
+    double jumpX_ = 0.0;
+    double jumpFrom_ = 0.0;
+    double jumpTo_ = 0.0;
+    double jumpWalk_ = 0.0;
+    int jumpSide_ = 1;
+    int jumpH_ = 0;
+    int sink_ = 0;
+    int portalX_ = -1;
+    double portalOpen_ = 0.0;
+    int portalKind_ = 0;
+    double portalFarX_ = 0.0;
+    double portalFarY_ = 0.0;
+    double portalFarOpen_ = 0.0;
+    int portalFarKind_ = 0;
     Canvas propCanvas_;
 };

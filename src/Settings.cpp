@@ -33,6 +33,8 @@ const AnimInfo kAnims[kAnimCount] = {
     {L"Umbrella", L"Rain and rainbow", AnimGroup::Activity, 1, nullptr},
     {L"Coffee", L"Coffee", AnimGroup::Activity, 3, L"6-11 h only"},
     {L"Yawn", L"Yawn", AnimGroup::Activity, 2, L"13-15 h and evening"},
+    {L"Portal", L"Portal gun", AnimGroup::Activity, 1, L"needs another window"},
+    {L"Climb", L"Climb a higher window", AnimGroup::Activity, 2, L"needs a window a bit higher"},
     {L"DuoLook", L"Look at each other", AnimGroup::Duo, 2, nullptr},
     {L"DuoWave", L"Wave at each other", AnimGroup::Duo, 2, nullptr},
     {L"DuoTalk", L"Talk", AnimGroup::Duo, 2, nullptr},

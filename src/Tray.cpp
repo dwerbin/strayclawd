@@ -31,39 +31,8 @@ void Tray::ShowMenu(HWND owner, const Settings& settings, bool crabVisible) cons
     AppendMenuW(freq, MF_STRING, kCmdOften, L"Often (20-60 s)");
     CheckMenuRadioItem(freq, kCmdRare, kCmdOften, kCmdRare + static_cast<UINT>(settings.frequency), MF_BYCOMMAND);
 
-    HMENU play = CreatePopupMenu();
-    AppendMenuW(play, MF_STRING, kCmdPlayPeek, L"Peek");
-    AppendMenuW(play, MF_STRING, kCmdPlayParachute, L"Parachute");
-    AppendMenuW(play, MF_STRING, kCmdPlayBuild, L"DIY on a ladder");
-    AppendMenuW(play, MF_STRING, kCmdPlayPaint, L"Paint");
-    AppendMenuW(play, MF_STRING, kCmdPlayMagic, L"Magic");
-    AppendMenuW(play, MF_STRING, kCmdPlayWizard, L"Magic: young wizard");
-    AppendMenuW(play, MF_STRING, kCmdPlayGreyWizard, L"Magic: grey wizard");
-    AppendMenuW(play, MF_STRING, kCmdPlayCook, L"Cook");
-    AppendMenuW(play, MF_STRING, kCmdPlayDizzy, L"Dizzy");
-    AppendMenuW(play, MF_STRING, kCmdPlayFish, L"Fishing");
-    AppendMenuW(play, MF_STRING, kCmdPlayRead, L"Reading");
-    AppendMenuW(play, MF_STRING, kCmdPlayJuggle, L"Juggling");
-    AppendMenuW(play, MF_STRING, kCmdPlayWater, L"Watering the plant");
-    AppendMenuW(play, MF_STRING, kCmdPlayFitness, L"Fitness");
-    AppendMenuW(play, MF_STRING, kCmdPlaySkate, L"Skateboard");
-    AppendMenuW(play, MF_STRING, kCmdPlayUmbrella, L"Rain and rainbow");
-    AppendMenuW(play, MF_STRING, kCmdPlayCoffee, L"Coffee");
-    AppendMenuW(play, MF_STRING, kCmdPlayYawn, L"Yawn");
-    AppendMenuW(play, MF_STRING, kCmdPlayRocket, L"Rocket");
-    AppendMenuW(play, MF_STRING, kCmdPlayDust, L"Dusting");
-    AppendMenuW(play, MF_STRING, kCmdPlaySweep, L"Sweeping");
-    AppendMenuW(play, MF_STRING, kCmdPlayYoga, L"Yoga");
-    HMENU duo = CreatePopupMenu();
-    for (int k = 0; k < kDuoCount; ++k) {
-        AppendMenuW(duo, MF_STRING, kCmdPlayDuo + k, kAnims[kAnimFirstDuo + k].label);
-    }
-    AppendMenuW(play, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(play, MF_POPUP, reinterpret_cast<UINT_PTR>(duo), L"With another crab");
-
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING, kCmdShow, L"Show now");
-    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(play), L"Play");
     AppendMenuW(menu, MF_STRING | (crabVisible ? 0u : MF_GRAYED), kCmdHide, L"Hide");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(freq), L"Frequency");
